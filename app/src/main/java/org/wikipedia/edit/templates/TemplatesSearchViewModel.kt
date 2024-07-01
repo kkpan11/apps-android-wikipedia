@@ -25,6 +25,7 @@ class TemplatesSearchViewModel(bundle: Bundle) : ViewModel() {
 
     val invokeSource = bundle.getSerializable(Constants.INTENT_EXTRA_INVOKE_SOURCE) as Constants.InvokeSource
     val wikiSite = bundle.parcelable<WikiSite>(Constants.ARG_WIKISITE)!!
+    val isFromDiff = bundle.getBoolean(TemplatesSearchActivity.EXTRA_FROM_DIFF, false)
     var searchQuery: String? = null
     var selectedPageTitle: PageTitle? = null
     val searchTemplatesFlow = Pager(PagingConfig(pageSize = 10)) {
@@ -49,12 +50,15 @@ class TemplatesSearchViewModel(bundle: Bundle) : ViewModel() {
                     val recentUsedTemplates = Prefs.recentUsedTemplates.filter { it.wikiSite == wikiSite }
                     return LoadResult.Page(recentUsedTemplates, null, null)
                 }
-                val query = Namespace.TEMPLATE.name + ":" + searchQuery + "*"
+                val query = Namespace.TEMPLATE.name + ":" + searchQuery
                 val response = ServiceFactory.get(wikiSite)
-                    .fullTextSearchTemplates(query, params.loadSize, params.key)
+                    .fullTextSearchTemplates("$query*", params.loadSize, params.key)
 
                 return response.query?.pages?.let { list ->
-                    val results = list.sortedBy { it.index }.map {
+                    val partition = list.partition { it.title.equals(query, true) }.apply {
+                        second.sortedBy { it.index }
+                    }
+                    val results = partition.toList().flatten().map {
                         val pageTitle = PageTitle(wikiSite = wikiSite, _text = it.title, description = it.description)
                         pageTitle.displayText = it.displayTitle(wikiSite.languageCode)
                         pageTitle
