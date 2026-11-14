@@ -2,40 +2,31 @@ package org.wikipedia.bridge
 
 import android.content.Context
 import kotlinx.serialization.Serializable
+import org.json.JSONObject
 import org.wikipedia.BuildConfig
 import org.wikipedia.R
 import org.wikipedia.WikipediaApp
 import org.wikipedia.auth.AccountUtil
-import org.wikipedia.dataclient.ServiceFactory
-import org.wikipedia.dataclient.WikiSite
+import org.wikipedia.extensions.getStrings
+import org.wikipedia.json.JsonUtil
 import org.wikipedia.page.Namespace
 import org.wikipedia.page.PageTitle
 import org.wikipedia.page.PageViewModel
 import org.wikipedia.settings.Prefs
 import org.wikipedia.util.DimenUtil
-import org.wikipedia.util.DimenUtil.densityScalar
-import org.wikipedia.util.DimenUtil.leadImageHeightForDevice
-import org.wikipedia.util.L10nUtil
-import java.util.Date
+import java.time.LocalDateTime
+import java.time.temporal.ChronoUnit
 import java.util.Locale
-import java.util.concurrent.TimeUnit
 import kotlin.math.roundToInt
 
 object JavaScriptActionHandler {
 
-    fun getCssStyles(wikiSite: WikiSite): String {
-        val baseCSS = "<link rel=\"stylesheet\" href=\"https://meta.wikimedia.org/api/rest_v1/data/css/mobile/base\">"
-        val siteCSS = "<link rel=\"stylesheet\" href=\"https://${wikiSite.subdomain()}.wikipedia.org/api/rest_v1/data/css/mobile/site\">"
-        val extraCSS = if (WikipediaApp.instance.currentTheme.isDark) "<style>img.mwe-math-fallback-image-inline { -webkit-filter: invert(1); } </style>" else ""
-        return baseCSS + siteCSS + extraCSS
-    }
-
     fun setTopMargin(top: Int): String {
-        return setMargins(16, top + 16, 16, 48)
+        return setMargins(top + 16, 48)
     }
 
-    fun setMargins(left: Int, top: Int, right: Int, bottom: Int): String {
-        return "pcs.c1.Page.setMargins({ top:'${top}px', right:'${right}px', bottom:'${bottom}px', left:'${left}px' })"
+    fun setMargins(top: Int, bottom: Int): String {
+        return "pcs.c1.Page.setMargins({ top:'${top}px', bottom:'${bottom}px' })"
     }
 
     fun getTextSelection(): String {
@@ -72,7 +63,7 @@ object JavaScriptActionHandler {
 
     fun scrollToAnchor(anchorLink: String): String {
         val anchor = anchorLink.substringAfter('#')
-        return "var el = document.getElementById('$anchor');" +
+        return "var el = document.getElementById(${JSONObject.quote(anchor)});" +
                 "window.scrollTo(0, el.offsetTop - (screen.height / 2));" +
                 "setTimeout(function(){ el.style.backgroundColor='#fc3';" +
                 "    setTimeout(function(){ el.style.backgroundColor=null; }, 500);" +
@@ -80,20 +71,21 @@ object JavaScriptActionHandler {
     }
 
     fun prepareToScrollTo(anchorLink: String, highlight: Boolean): String {
-        return "pcs.c1.Page.prepareForScrollToAnchor(\"${anchorLink.replace("\"", "\\\"")}\", { highlight: $highlight } )"
+        return "pcs.c1.Page.prepareForScrollToAnchor(${JSONObject.quote(anchorLink)}, { highlight: $highlight } )"
     }
 
     fun removeHighlights(): String {
         return "pcs.c1.Page.removeHighlightsFromHighlightedElements()"
     }
 
-    fun setUp(context: Context, title: PageTitle, isPreview: Boolean, toolbarMargin: Int): String {
+    fun setUp(context: Context, title: PageTitle, isPreview: Boolean, toolbarMargin: Int, messageCardHeight: Float): String {
         val app = WikipediaApp.instance
         val topActionBarHeight = if (isPreview) 0 else DimenUtil.roundedPxToDp(toolbarMargin.toFloat())
-        val res = L10nUtil.getStringsForArticleLanguage(title, intArrayOf(R.string.description_edit_add_description,
+        val res = context.getStrings(title, intArrayOf(R.string.description_edit_add_description,
                 R.string.table_infobox, R.string.table_other, R.string.table_close))
-        val leadImageHeight = if (isPreview) 0 else
-            (if (DimenUtil.isLandscape(context) || !Prefs.isImageDownloadEnabled) 0 else (leadImageHeightForDevice(context) / densityScalar).roundToInt() - topActionBarHeight)
+        var leadImageHeight = if (isPreview) 0 else
+            (if (DimenUtil.isLandscape(context) || !Prefs.isImageDownloadEnabled) 0 else (DimenUtil.leadImageHeightForDevice(context) / DimenUtil.densityScalar).roundToInt() - topActionBarHeight)
+        leadImageHeight += DimenUtil.roundedPxToDp(messageCardHeight)
         val topMargin = topActionBarHeight + 16
 
         var fontFamily = Prefs.fontFamily
@@ -113,14 +105,14 @@ object JavaScriptActionHandler {
                 "   \"theme\": \"${app.currentTheme.tag}\"," +
                 "   \"bodyFont\": \"$fontFamily\"," +
                 "   \"dimImages\": ${(app.currentTheme.isDark && Prefs.dimDarkModeImages)}," +
-                "   \"margins\": { \"top\": \"%dpx\", \"right\": \"%dpx\", \"bottom\": \"%dpx\", \"left\": \"%dpx\" }," +
+                "   \"margins\": { \"top\": \"%dpx\", \"bottom\": \"%dpx\" }," +
                 "   \"leadImageHeight\": \"%dpx\"," +
                 "   \"areTablesInitiallyExpanded\": ${isPreview || !Prefs.isCollapseTablesEnabled}," +
                 "   \"textSizeAdjustmentPercentage\": \"100%%\"," +
                 "   \"loadImages\": ${Prefs.isImageDownloadEnabled}," +
-                "   \"userGroups\": \"${AccountUtil.groups}\"," +
+                "   \"userGroups\": ${JsonUtil.encodeToString(AccountUtil.groups)}," +
                 "   \"isEditable\": ${!Prefs.readingFocusModeEnabled}" +
-                "}", topMargin, 16, 48, 16, leadImageHeight)
+                "}", topMargin, 48, leadImageHeight)
     }
 
     fun setUpEditButtons(isEditable: Boolean, isProtected: Boolean): String {
@@ -132,12 +124,12 @@ object JavaScriptActionHandler {
             return ""
         }
         val showTalkLink = model.page!!.title.namespace() !== Namespace.TALK
-        val showMapLink = model.page!!.pageProperties.geo != null
-        val editedDaysAgo = TimeUnit.MILLISECONDS.toDays(Date().time - model.page!!.pageProperties.lastModified.time)
+        val showMapLink = model.page!!.summary.coordinates != null
+        val editedDaysAgo = ChronoUnit.DAYS.between(model.page!!.lastModified, LocalDateTime.now())
+        val langCode = model.title?.wikiSite?.languageCode ?: WikipediaApp.instance.appOrSystemLanguageCode
 
         // TODO: page-library also supports showing disambiguation ("similar pages") links and
         // "page issues". We should be mindful that they exist, even if we don't want them for now.
-        val baseURL = ServiceFactory.getRestBasePath(model.title?.wikiSite!!).trimEnd('/')
         return "pcs.c1.Footer.add({" +
                 "   platform: \"android\"," +
                 "   clientVersion: \"${BuildConfig.VERSION_NAME}\"," +
@@ -154,7 +146,26 @@ object JavaScriptActionHandler {
                 "   }," +
                 "   readMore: { " +
                 "       itemCount: 3," +
-                "       baseURL: \"$baseURL\"," +
+                "       readMoreLazy: true," +
+                "       langCode: \"$langCode\"," +
+                "       fragment: \"pcs-read-more\"" +
+                "   }" +
+                "})"
+    }
+
+    fun appendReadMode(model: PageViewModel): String {
+        if (model.page == null) {
+            return ""
+        }
+        val apiBaseURL = model.title?.wikiSite!!.scheme() + "://" + model.title?.wikiSite!!.uri.authority!!.trimEnd('/')
+        val langCode = model.title?.wikiSite?.languageCode ?: WikipediaApp.instance.appOrSystemLanguageCode
+        return "pcs.c1.Footer.appendReadMore({" +
+                "   platform: \"android\"," +
+                "   clientVersion: \"${BuildConfig.VERSION_NAME}\"," +
+                "   readMore: { " +
+                "       itemCount: 3," +
+                "       apiBaseURL: \"$apiBaseURL\"," +
+                "       langCode: \"$langCode\"," +
                 "       fragment: \"pcs-read-more\"" +
                 "   }" +
                 "})"
@@ -163,8 +174,14 @@ object JavaScriptActionHandler {
     fun mobileWebChromeShim(marginTop: Int, marginBottom: Int): String {
         return "(function() {" +
                 "let style = document.createElement('style');" +
-                "style.innerHTML = '.header-chrome { visibility: hidden; margin-top: ${marginTop}px; height: 0px; } #page-secondary-actions { display: none; } .mw-footer { padding-bottom: ${marginBottom}px; } .page-actions-menu { display: none; } .minerva__tab-container { display: none; }';" +
+                "style.innerHTML = '.header-chrome { visibility: hidden; margin-top: ${marginTop}px; height: 0px; } #page-secondary-actions { display: none; } .mw-footer { padding-bottom: ${marginBottom}px; } .page-actions-menu { display: none; } .minerva__tab-container { display: none; } .banner-container { display: none; }';" +
                 "document.head.appendChild(style);" +
+                "})();"
+    }
+
+    fun mobileWebSetDarkMode(): String {
+        return "(function() {" +
+                "document.documentElement.classList.add('skin-theme-clientpref-night');" +
                 "})();"
     }
 
@@ -188,7 +205,17 @@ object JavaScriptActionHandler {
                 "})();"
     }
 
+    fun jumpToHighlightOrSection(headingId: String?, highlightText: String?, scroll: Boolean = true): String {
+        val highlight = highlightText?.let { JSONObject.quote(it) } ?: "null"
+        val section = headingId?.let { JSONObject.quote(it) } ?: "null"
+        return "pcs.c1.Highlight.jumpToHighlightOrSection($highlight, $section, { scroll: $scroll })"
+    }
+
+    fun clearHighlight(): String {
+        return "pcs.c1.Highlight.clearHighlight()"
+    }
+
     @Serializable
     class ImageHitInfo(val left: Float = 0f, val top: Float = 0f, val width: Float = 0f, val height: Float = 0f,
-                       val src: String = "", val centerCrop: Boolean = false)
+                       val src: String = "")
 }

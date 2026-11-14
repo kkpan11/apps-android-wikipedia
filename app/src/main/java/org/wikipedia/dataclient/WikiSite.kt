@@ -2,6 +2,7 @@ package org.wikipedia.dataclient
 
 import android.net.Uri
 import android.os.Parcelable
+import androidx.core.net.toUri
 import kotlinx.parcelize.Parcelize
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -9,7 +10,6 @@ import org.wikipedia.Constants
 import org.wikipedia.WikipediaApp
 import org.wikipedia.json.UriSerializer
 import org.wikipedia.language.AppLanguageLookUpTable
-import org.wikipedia.language.LanguageUtil
 import org.wikipedia.util.UriUtil
 
 /**
@@ -57,9 +57,20 @@ data class WikiSite(
         authority = authority.replace(".m.", ".")
         languageCode = UriUtil.getLanguageVariantFromUri(tempUri).ifEmpty { authorityToLanguageCode(authority) }
 
-        // This prevents showing mixed Chinese variants article when the URL is /zh/ or /wiki/ in zh.wikipedia.org
-        if (languageCode == AppLanguageLookUpTable.CHINESE_LANGUAGE_CODE) {
-            languageCode = LanguageUtil.firstSelectedChineseVariant
+        // For language variant wikis, automatically switch to the preferred variant if possible.
+        val parentLanguageCode = WikipediaApp.instance.languageState.getDefaultLanguageCode(languageCode)
+        // For the default language code like "zh", we need to check if it has variants.
+        var languageVariants = WikipediaApp.instance.languageState.getLanguageVariants(languageCode)
+        if (parentLanguageCode != null || languageVariants != null) {
+            // Get language variants from the parent language code
+            if (languageVariants == null) {
+                languageVariants = WikipediaApp.instance.languageState.getLanguageVariants(parentLanguageCode)
+            }
+            // Try to find the first selected variant that matches the URL's parent language code
+            // This prevents showing mixed language variants article when the URL contains parent language codes such as "zh" or "wiki"
+            languageCode = WikipediaApp.instance.languageState.appLanguageCodes.firstOrNull {
+                languageVariants?.contains(it) == true
+            } ?: languageCode
         }
 
         if (languageCode == Constants.WIKI_CODE_COMMONS) {
@@ -77,9 +88,9 @@ data class WikiSite(
 
     constructor(url: String) : this(
         when {
-            url.startsWith("http") -> Uri.parse(url)
-            url.startsWith("//") -> Uri.parse("$DEFAULT_SCHEME:$url")
-            else -> Uri.parse("$DEFAULT_SCHEME://$url")
+            url.startsWith("http") -> url.toUri()
+            url.startsWith("//") -> "$DEFAULT_SCHEME:$url".toUri()
+            else -> "$DEFAULT_SCHEME://$url".toUri()
         }
     )
 
@@ -114,6 +125,8 @@ data class WikiSite(
     fun dbName(): String {
         return (if (uri.authority.orEmpty().contains("wikidata")) {
             "wikidata"
+        } else if (uri.authority.orEmpty().contains("commons")) {
+            "commons"
         } else {
             subdomain().replace("-".toRegex(), "_")
         }) + "wiki"
@@ -125,16 +138,15 @@ data class WikiSite(
         private var DEFAULT_BASE_URL: String? = null
 
         fun supportedAuthority(authority: String): Boolean {
-            return authority.endsWith(Uri.parse(DEFAULT_BASE_URL).authority!!)
+            return Service.matchesAuthority(authority, DEFAULT_BASE_URL!!.toUri().authority!!)
         }
 
         fun setDefaultBaseUrl(url: String) {
             DEFAULT_BASE_URL = url.ifEmpty { Service.WIKIPEDIA_URL }
         }
 
-        @JvmStatic
         fun forLanguageCode(languageCode: String): WikiSite {
-            val uri = ensureScheme(Uri.parse(DEFAULT_BASE_URL))
+            val uri = ensureScheme(DEFAULT_BASE_URL!!.toUri())
             return WikiSite(
                 (if (languageCode.isEmpty()) "" else languageCodeToSubdomain(languageCode) + ".") + uri.authority,
                 languageCode
@@ -145,8 +157,19 @@ data class WikiSite(
             return when (languageCode) {
                 AppLanguageLookUpTable.NORWEGIAN_BOKMAL_LANGUAGE_CODE -> AppLanguageLookUpTable.NORWEGIAN_LEGACY_LANGUAGE_CODE // T114042
                 AppLanguageLookUpTable.BELARUSIAN_LEGACY_LANGUAGE_CODE -> AppLanguageLookUpTable.BELARUSIAN_TARASK_LANGUAGE_CODE // T111853
+                AppLanguageLookUpTable.CHINESE_LEGACY_YUE_LANGUAGE_CODE -> AppLanguageLookUpTable.CHINESE_YUE_LANGUAGE_CODE
+                AppLanguageLookUpTable.CHINESE_CLASSICAL_LANGUAGE_CODE -> AppLanguageLookUpTable.CHINESE_CLASSICAL_LEGACY_LANGUAGE_CODE
+                AppLanguageLookUpTable.CHINESE_MIN_NAN_LANGUAGE_CODE -> AppLanguageLookUpTable.CHINESE_MIN_NAN_LEGACY_LANGUAGE_CODE
                 else -> languageCode
             }
+        }
+
+        /**
+         * For use only in Composable Previews, since this bypasses much of the internal constructor
+         * logic that depends on a WikipediaApp instance.
+         */
+        fun preview(languageCode: String = "en"): WikiSite {
+            return WikiSite("https://$languageCode.wikipedia.org/".toUri(), languageCode)
         }
 
         private fun languageCodeToSubdomain(languageCode: String): String {

@@ -3,23 +3,32 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="match_parent"
+    android:fitsSystemWindows="true">
+
+    <com.google.android.material.appbar.MaterialToolbar
+        android:id="@+id/toolbar"
+        android:layout_width="match_parent"
+        android:layout_height="?attr/actionBarSize"
+        app:title="@string/login_activity_title"/>
 
     <ScrollView
         android:layout_width="match_parent"
-        android:layout_height="match_parent">
+        android:layout_height="match_parent"
+        android:layout_marginTop="?attr/actionBarSize">
 
-        <LinearLayout
+        <FrameLayout
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical">
+            android:layout_height="wrap_content">
 
             <LinearLayout
+                android:id="@+id/login_primary_container"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="16dp"
                 android:clipToPadding="false"
                 android:orientation="vertical"
+                android:animateLayoutChanges="true"
                 android:paddingStart="@dimen/activity_horizontal_margin"
                 android:paddingEnd="@dimen/activity_horizontal_margin">
 
@@ -60,8 +69,10 @@
                     android:id="@+id/login_2fa_text"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
                     android:hint="@string/login_2fa_hint"
-                    android:visibility="gone">
+                    android:visibility="gone"
+                    tools:visibility="visible">
 
                     <org.wikipedia.views.PlainPasteEditText
                         style="?android:textAppearanceMedium"
@@ -71,6 +82,11 @@
                         android:inputType="textVisiblePassword|textNoSuggestions"
                         android:maxLines="1" />
                 </com.google.android.material.textfield.TextInputLayout>
+
+                <include
+                    android:id="@+id/captcha_container"
+                    layout="@layout/group_captcha"
+                    tools:visibility="visible" />
 
                 <Button
                     android:id="@+id/login_button"
@@ -111,12 +127,12 @@
                 </LinearLayout>
 
                 <include
-                    android:id="@+id/inflate_login_and_account"
+                    android:id="@+id/footer_container"
                     layout="@layout/inflate_login_and_account_creation_footer" />
 
             </LinearLayout>
 
-        </LinearLayout>
+        </FrameLayout>
 
     </ScrollView>
 
@@ -133,6 +149,7 @@
         android:id="@+id/view_progress_bar"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:layout_marginTop="?attr/actionBarSize"
         android:indeterminate="true"
         android:visibility="gone"
         tools:visibility="visible" />

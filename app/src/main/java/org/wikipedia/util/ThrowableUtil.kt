@@ -1,8 +1,9 @@
 package org.wikipedia.util
 
 import android.content.Context
-import androidx.annotation.WorkerThread
-import io.reactivex.rxjava3.core.Observable
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.withContext
 import org.json.JSONException
 import org.wikipedia.R
 import org.wikipedia.WikipediaApp
@@ -12,8 +13,7 @@ import org.wikipedia.dataclient.WikiSite
 import org.wikipedia.dataclient.mwapi.MwException
 import org.wikipedia.dataclient.mwapi.MwServiceError
 import org.wikipedia.dataclient.okhttp.HttpStatusException
-import org.wikipedia.login.LoginClient.LoginFailedException
-import org.wikipedia.util.log.L
+import org.wikipedia.login.LoginFailedException
 import java.net.SocketException
 import java.net.SocketTimeoutException
 import java.net.UnknownHostException
@@ -87,35 +87,35 @@ object ThrowableUtil {
                 throwableContainsException(e, SSLException::class.java)
     }
 
-    @WorkerThread
-    fun getBlockMessageHtml(blockInfo: MwServiceError.BlockInfo, wikiSite: WikiSite = WikipediaApp.instance.wikiSite): String {
+    suspend fun getBlockMessageHtml(blockInfo: MwServiceError.BlockInfo, wikiSite: WikiSite = WikipediaApp.instance.wikiSite): String {
         var html = ""
-        Observable.zip(ServiceFactory.get(wikiSite).userInfo,
-            ServiceFactory.get(wikiSite).parsePage("MediaWiki:Blockedtext"),
-            ServiceFactory.get(wikiSite).parseText(blockInfo.blockReason)) { userInfoResponse, blockedParseResponse, reasonParseResponse ->
-            parseBlockedError(
-                blockedParseResponse.text, blockInfo,
-                reasonParseResponse.text, userInfoResponse.query?.userInfo!!.name
-            )
-        }.blockingSubscribe({ html = it }) { L.e(it) }
+        withContext(Dispatchers.IO) {
+            val userInfoCall = async { ServiceFactory.get(wikiSite).getUserInfo() }
+            val blockedPageCall = async { ServiceFactory.get(wikiSite).parsePage("MediaWiki:Blockedtext") }
+            val reasonTextCall = async { ServiceFactory.get(wikiSite).parseText(blockInfo.blockReason) }
+
+            html = parseBlockedError(blockedPageCall.await().text, blockInfo,
+                reasonTextCall.await().text, userInfoCall.await().query?.userInfo!!.name)
+        }
         return html
     }
 
     private fun parseBlockedError(template: String, info: MwServiceError.BlockInfo, reason: String, userName: String): String {
-        return template.replace("$1", "<a href=\"${StringUtil.userPageTitleFromName(info.blockedBy, WikipediaApp.instance.wikiSite).mobileUri}\">${info.blockedBy}</a>")
+        return template.replace("$1", "<a href=\"${StringUtil.userPageTitleFromName(info.blockedBy, WikipediaApp.instance.wikiSite).uri}\">${info.blockedBy}</a>")
             .replace("$2", reason)
             .replace("$3", "") // IP address of user (TODO: somehow get from API?)
             .replace("$4", "") // unknown parameter (unused?)
             .replace("$5", info.blockId.toString())
             .replace("$6", parseBlockedDate(info.blockExpiry))
-            .replace("$7", "<a href=\"${StringUtil.userPageTitleFromName(userName, WikipediaApp.instance.wikiSite).mobileUri}\">$userName</a>")
+            .replace("$7", userName)
             .replace("$8", parseBlockedDate(info.blockTimeStamp))
     }
 
     private fun parseBlockedDate(dateStr: String): String {
         try {
             return DateUtil.iso8601DateParse(dateStr).toString()
-        } catch (_: Exception) {}
+        } catch (_: Exception) {
+        }
         return dateStr
     }
 

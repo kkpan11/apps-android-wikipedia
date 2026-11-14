@@ -1,53 +1,28 @@
 package org.wikipedia.feed.random
 
-import android.content.Context
-import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers
-import io.reactivex.rxjava3.core.Observable
-import io.reactivex.rxjava3.disposables.CompositeDisposable
-import io.reactivex.rxjava3.schedulers.Schedulers
-import org.wikipedia.database.AppDatabase
 import org.wikipedia.dataclient.ServiceFactory
 import org.wikipedia.dataclient.WikiSite
-import org.wikipedia.dataclient.page.PageSummary
-import org.wikipedia.feed.FeedContentType
-import org.wikipedia.feed.FeedCoordinator
-import org.wikipedia.feed.dataclient.FeedClient
-import org.wikipedia.readinglist.database.ReadingListPage
-import org.wikipedia.util.log.L
+import org.wikipedia.page.PageTitle
+import org.wikipedia.util.StringUtil
+import kotlin.math.max
 
-class RandomClient : FeedClient {
-
-    private val disposables = CompositeDisposable()
-
-    override fun request(context: Context, wiki: WikiSite, age: Int, cb: FeedClient.Callback) {
-        cancel()
-        disposables.add(
-            Observable.fromIterable(FeedContentType.aggregatedLanguages)
-                .flatMap({ lang -> getRandomSummaryObservable(lang) }, { first, second -> Pair(first, second) })
-                .observeOn(AndroidSchedulers.mainThread())
-                .toList()
-                .subscribe({ pairs ->
-                    val list = pairs.map { RandomCard(it.second, age, WikiSite.forLanguageCode(it.first)) }
-                    FeedCoordinator.postCardsToCallback(cb, list)
-                }) { t ->
-                    L.v(t)
-                    cb.error(t)
-                })
-    }
-
-    private fun getRandomSummaryObservable(lang: String): Observable<PageSummary> {
-        return ServiceFactory.getRest(WikiSite.forLanguageCode(lang))
-            .randomSummary
-            .subscribeOn(Schedulers.io())
-            .onErrorResumeNext { throwable ->
-                Observable.fromCallable {
-                    val page = AppDatabase.instance.readingListPageDao().getRandomPage() ?: throw throwable as Exception
-                    ReadingListPage.toPageSummary(page)
-                }
+object RandomClient {
+    suspend fun getRandomPages(wikiSite: WikiSite, count: Int): List<PageTitle> {
+        return ServiceFactory.get(wikiSite).getRandomPagesWithExtract(max(count, 10) * 4).query?.pages.orEmpty().asSequence().filter {
+            it.pageProps?.disambiguation == null
+        }.filter {
+            wikiSite.languageCode != "en" || (!it.description.orEmpty().contains("list article", ignoreCase = true) && !it.description.orEmpty().contains("list of", ignoreCase = true))
+        }.map { page ->
+            PageTitle(
+                text = page.title,
+                wiki = wikiSite,
+                thumbUrl = page.thumbUrl(),
+                description = page.description,
+                displayText = page.displayTitle(wikiSite.languageCode),
+            ).also {
+                if (!page.sectionTitle.isNullOrEmpty()) it.fragment = StringUtil.addUnderscores(page.sectionTitle)
+                it.extract = page.extract?.trim()
             }
-    }
-
-    override fun cancel() {
-        disposables.clear()
+        }.sortedBy { it.thumbUrl == null || it.extract.isNullOrEmpty() }.take(count).toList()
     }
 }

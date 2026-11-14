@@ -9,6 +9,7 @@ import androidx.annotation.StringRes
 import org.wikipedia.R
 import org.wikipedia.databinding.ViewWikiErrorBinding
 import org.wikipedia.dataclient.mwapi.MwException
+import org.wikipedia.dataclient.mwapi.MwNotLoggedInException
 import org.wikipedia.page.LinkMovementMethodExt
 import org.wikipedia.page.Namespace
 import org.wikipedia.page.PageTitle
@@ -25,6 +26,7 @@ class WikiErrorView : LinearLayout {
     var retryClickListener: OnClickListener? = null
     var backClickListener: OnClickListener? = null
     var nextClickListener: OnClickListener? = null
+    var loginClickListener: OnClickListener? = null
     val contentTopOffset get() = binding.viewWikiErrorArticleContentTopOffset
     val tabLayoutOffset get() = binding.viewWikiErrorArticleTabLayoutOffset
 
@@ -95,6 +97,9 @@ class WikiErrorView : LinearLayout {
                 isEmptyException(it) -> {
                     return ErrorType.EMPTY
                 }
+                it is MwNotLoggedInException -> {
+                    return ErrorType.LOGGED_OUT
+                }
                 else -> { }
             }
         }
@@ -134,6 +139,12 @@ class WikiErrorView : LinearLayout {
                 R.string.error_next) {
             override fun buttonClickListener(errorView: WikiErrorView): OnClickListener? {
                 return errorView.nextClickListener
+            }
+        },
+        LOGGED_OUT(R.drawable.ic_error_black_24dp, R.string.error_message_generic,
+            R.string.reading_lists_login_button) {
+            override fun buttonClickListener(errorView: WikiErrorView): OnClickListener? {
+                return errorView.loginClickListener
             }
         },
         GENERIC(R.drawable.ic_error_black_24dp, R.string.error_message_generic,

@@ -2,15 +2,19 @@ package org.wikipedia.page.leadimages
 
 import android.net.Uri
 import androidx.core.app.ActivityOptionsCompat
-import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers
-import io.reactivex.rxjava3.core.Observable
-import io.reactivex.rxjava3.disposables.CompositeDisposable
-import io.reactivex.rxjava3.schedulers.Schedulers
+import androidx.core.net.toUri
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.CoroutineExceptionHandler
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.async
+import kotlinx.coroutines.launch
 import org.wikipedia.Constants
 import org.wikipedia.Constants.ImageEditType
 import org.wikipedia.Constants.InvokeSource
 import org.wikipedia.R
 import org.wikipedia.WikipediaApp
+import org.wikipedia.analytics.ABTest.Companion.GROUP_2
+import org.wikipedia.analytics.eventplatform.DonorExperienceEvent
 import org.wikipedia.auth.AccountUtil
 import org.wikipedia.bridge.JavaScriptActionHandler
 import org.wikipedia.commons.ImageTagsProvider
@@ -19,14 +23,23 @@ import org.wikipedia.dataclient.ServiceFactory
 import org.wikipedia.dataclient.WikiSite
 import org.wikipedia.dataclient.mwapi.MwQueryPage
 import org.wikipedia.descriptions.DescriptionEditActivity
+import org.wikipedia.donate.DonateDialog
+import org.wikipedia.donate.donationreminder.DonationReminderAbTest
+import org.wikipedia.donate.donationreminder.DonationReminderActivity
+import org.wikipedia.donate.donationreminder.DonationReminderHelper
+import org.wikipedia.donate.donationreminder.DonationReminderType
 import org.wikipedia.gallery.GalleryActivity
+import org.wikipedia.page.ExclusiveBottomSheetPresenter
 import org.wikipedia.page.PageFragment
 import org.wikipedia.page.PageTitle
 import org.wikipedia.settings.Prefs
 import org.wikipedia.suggestededits.PageSummaryForEdit
 import org.wikipedia.util.DimenUtil
+import org.wikipedia.util.FeedbackUtil
 import org.wikipedia.util.StringUtil
+import org.wikipedia.util.log.L
 import org.wikipedia.views.ObservableWebView
+import org.wikipedia.views.SurveyDialog
 
 class LeadImagesHandler(private val parentFragment: PageFragment,
                         webView: ObservableWebView,
@@ -45,21 +58,19 @@ class LeadImagesHandler(private val parentFragment: PageFragment,
     private val title get() = parentFragment.title
     private val page get() = parentFragment.page
     private val activity get() = parentFragment.requireActivity()
-    private val disposables = CompositeDisposable()
+    private var handlerJob: Job? = null
 
     private val isLeadImageEnabled get() = Prefs.isImageDownloadEnabled && !DimenUtil.isLandscape(activity) && displayHeightDp >= MIN_SCREEN_HEIGHT_DP && !isMainPage && !leadImageUrl.isNullOrEmpty()
-    private val leadImageWidth get() = page?.run { pageProperties.leadImageWidth } ?: pageHeaderView.imageView.width
-    private val leadImageHeight get() = page?.run { pageProperties.leadImageHeight } ?: pageHeaderView.imageView.height
+    private val leadImageWidth get() = page?.leadImageWidth ?: pageHeaderView.imageView.width
+    private val leadImageHeight get() = page?.leadImageHeight ?: pageHeaderView.imageView.height
 
-    // Conditionally add the PageTitle's URL scheme and authority if these are missing from the
-    // PageProperties' URL.
     private val leadImageUrl: String?
         get() {
-            val url = page?.run { pageProperties.leadImageUrl } ?: return null
-            title?.let {
+            return title?.let {
                 // Conditionally add the PageTitle's URL scheme and authority if these are missing from the
-                // PageProperties' URL.
-                val fullUri = Uri.parse(url)
+                // PageSummary's URL.
+                val url = page?.leadImageUrl ?: return@let null
+                val fullUri = url.toUri()
                 var scheme: String? = it.wikiSite.scheme()
                 var authority: String? = it.wikiSite.authority()
                 if (fullUri.scheme != null) {
@@ -73,10 +84,13 @@ class LeadImagesHandler(private val parentFragment: PageFragment,
                     .authority(authority)
                     .path(fullUri.path)
                     .toString()
-            } ?: return null
+            }
         }
 
-    val topMargin get() = DimenUtil.roundedPxToDp((if (isLeadImageEnabled) DimenUtil.leadImageHeightForDevice(parentFragment.requireContext()) else parentFragment.toolbarMargin.toFloat()).toFloat())
+    val topMargin get() = DimenUtil.roundedPxToDp(
+        ((if (isLeadImageEnabled) DimenUtil.leadImageHeightForDevice(activity) else parentFragment.toolbarMargin.toFloat()).toFloat()) +
+                getDonationReminderCardViewHeight(true)
+    )
     val callToActionEditLang get() =
         if (callToActionIsTranslation) callToActionTargetSummary?.pageTitle?.wikiSite?.languageCode else callToActionSourceSummary?.pageTitle?.wikiSite?.languageCode
 
@@ -94,54 +108,49 @@ class LeadImagesHandler(private val parentFragment: PageFragment,
     private fun updateCallToAction() {
         dispose()
         pageHeaderView.callToActionText = null
-        if (!AccountUtil.isLoggedIn || leadImageUrl == null || !leadImageUrl!!.contains(Service.URL_FRAGMENT_FROM_COMMONS) || page == null) {
+        if (!WikipediaApp.instance.isOnline || !AccountUtil.isLoggedIn || leadImageUrl?.contains(Service.URL_FRAGMENT_FROM_COMMONS) != true || page == null) {
             return
         }
         title?.let {
-            val imageTitle = "File:" + page!!.pageProperties.leadImageName
+            val imageTitle = "File:" + page!!.leadImageName
             pageHeaderView.imageView.contentDescription = StringUtil.fromHtml(parentFragment.getString(R.string.image_content_description, it.displayText))
             if (imageTitle == lastImageTitleForCallToAction) {
                 finalizeCallToAction()
                 return
             }
-            disposables.add(ServiceFactory.get(Constants.commonsWikiSite).getProtectionInfo(imageTitle)
-                .subscribeOn(Schedulers.io())
-                .map { response -> response.query?.isEditProtected ?: false }
-                .flatMap { isProtected ->
-                    if (isProtected) Observable.empty() else Observable.zip(ServiceFactory.get(Constants.commonsWikiSite).getEntitiesByTitle(imageTitle, Constants.COMMONS_DB_NAME),
-                        ServiceFactory.get(Constants.commonsWikiSite).getImageInfo(imageTitle, WikipediaApp.instance.appOrSystemLanguageCode)) { first, second -> Pair(first, second) }
-                }
-                .flatMap { pair ->
-                    val labelMap = pair.first.first?.labels?.values?.associate { v -> v.language to v.value }.orEmpty()
-                    val depicts = ImageTagsProvider.getDepictsClaims(pair.first.first?.getStatements().orEmpty())
+            handlerJob = parentFragment.viewLifecycleOwner.lifecycleScope.launch(CoroutineExceptionHandler { _, throwable ->
+                L.e(throwable)
+            }) {
+                lastImageTitleForCallToAction = imageTitle
+                val isProtected = ServiceFactory.get(Constants.commonsWikiSite)
+                    .getProtectionWithUserInfo(imageTitle).query?.isEditProtected ?: false
+                if (!isProtected) {
+                    val firstEntity = async {
+                        ServiceFactory.get(Constants.commonsWikiSite).getEntitiesByTitleSuspend(imageTitle, Constants.COMMONS_DB_NAME).first
+                    }
+                    val firstImageInfo = async {
+                        ServiceFactory.get(Constants.commonsWikiSite).getImageInfo(imageTitle, Constants.COMMONS_DB_NAME).query?.firstPage()
+                    }
+                    val labelMap = firstEntity.await()?.getLabels()?.values?.associate { v -> v.language to v.value }.orEmpty()
+                    val depicts = ImageTagsProvider.getDepictsClaims(firstEntity.await()?.getStatements().orEmpty())
+                    imagePage = firstImageInfo.await()
                     captionSourcePageTitle = PageTitle(imageTitle, WikiSite(Service.COMMONS_URL, it.wikiSite.languageCode))
                     captionSourcePageTitle!!.description = labelMap[it.wikiSite.languageCode]
-                    imagePage = pair.second.query?.firstPage()
-                    imageEditType = null // Need to clear value from precious call
                     if (!labelMap.containsKey(it.wikiSite.languageCode)) {
                         imageEditType = ImageEditType.ADD_CAPTION
-                        return@flatMap Observable.just(depicts)
                     }
                     if (WikipediaApp.instance.languageState.appLanguageCodes.size >= Constants.MIN_LANGUAGES_TO_UNLOCK_TRANSLATION) {
-                        for (lang in WikipediaApp.instance.languageState.appLanguageCodes) {
-                            if (!labelMap.containsKey(lang)) {
-                                imageEditType = ImageEditType.ADD_CAPTION_TRANSLATION
-                                captionTargetPageTitle = PageTitle(imageTitle, WikiSite(Service.COMMONS_URL, lang))
-                                break
-                            }
+                        WikipediaApp.instance.languageState.appLanguageCodes.firstOrNull { lang -> !labelMap.containsKey(lang) }?.run {
+                            imageEditType = ImageEditType.ADD_CAPTION_TRANSLATION
+                            captionTargetPageTitle = PageTitle(imageTitle, WikiSite(Service.COMMONS_URL, this))
                         }
                     }
-                    Observable.just(depicts)
-                }
-                .observeOn(AndroidSchedulers.mainThread())
-                .subscribe { depicts ->
                     if (imageEditType != ImageEditType.ADD_CAPTION && depicts.isEmpty()) {
                         imageEditType = ImageEditType.ADD_TAGS
                     }
-                    finalizeCallToAction()
-                    lastImageTitleForCallToAction = imageTitle
                 }
-            )
+                finalizeCallToAction()
+            }
         }
     }
 
@@ -198,7 +207,83 @@ class LeadImagesHandler(private val parentFragment: PageFragment,
                     }
                 }
             }
+
+            override fun donationReminderCardPositiveClicked(type: DonationReminderType) {
+                hideDonationReminderCard()
+                if (type == DonationReminderType.WRAP_UP) {
+                    if (DonationReminderAbTest().group == GROUP_2) {
+                        DonorExperienceEvent.logDonationReminderAction(
+                            activeInterface = "reminder_end",
+                            action = "feedback_start_click",
+                        )
+                        SurveyDialog.showDonationReminderFeedbackDialog(
+                            activity = parentFragment.requireActivity(),
+                            onImpression = { },
+                            onCancel = {
+                                DonorExperienceEvent.logDonationReminderAction(
+                                    activeInterface = "reminder_feedback",
+                                    action = "cancel_click",
+                                )
+                            },
+                            onSubmit = { feedbackOption, feedbackText ->
+                                DonorExperienceEvent.logDonationReminderAction(
+                                    activeInterface = "reminder_feedback",
+                                    action = "feedback_submit_click",
+                                    feedbackSelect = feedbackOption,
+                                    feedbackText = feedbackText
+                                )
+                            }
+                        )
+                    } else {
+                        DonorExperienceEvent.logDonationReminderAction(
+                            activeInterface = "reminder_recur_end",
+                            action = "recurring_start_click",
+                        )
+                        ExclusiveBottomSheetPresenter.show(parentFragment.parentFragmentManager, DonateDialog.newInstance(fromDonationReminder = true, fromDonationReminderWrapUp = true))
+                    }
+                } else {
+                    DonorExperienceEvent.logDonationReminderAction(
+                        activeInterface = "reminder_milestone",
+                        action = "donate_start_click",
+                        campaignId = DonationReminderHelper.getCampaignId()
+                    )
+                    ExclusiveBottomSheetPresenter.show(parentFragment.parentFragmentManager, DonateDialog.newInstance(fromDonationReminder = true))
+                }
+            }
+
+            override fun donationReminderCardNegativeClicked(type: DonationReminderType) {
+                hideDonationReminderCard()
+                if (type == DonationReminderType.WRAP_UP) {
+                    DonorExperienceEvent.logDonationReminderAction(
+                        activeInterface = if (DonationReminderAbTest().group == GROUP_2) {
+                            "reminder_end"
+                        } else {
+                            "reminder_recur_end"
+                        },
+                        action = "nothanks_click",
+                    )
+                } else {
+                    DonorExperienceEvent.logDonationReminderAction(
+                        activeInterface = "reminder_milestone",
+                        action = "notnow_click"
+                    )
+                    FeedbackUtil.makeSnackbar(activity, activity.getString(R.string.donation_reminders_prompt_dismiss_snackbar))
+                        .setAction(R.string.donation_reminders_snackbar_modify_button_label) {
+                            DonorExperienceEvent.logDonationReminderAction(activeInterface = "reminder_milestone",
+                                action = "setting_click"
+                            )
+                            activity.startActivity(DonationReminderActivity.newIntent(activity, isFromSettings = true))
+                        }.show()
+                }
+            }
         }
+    }
+
+    private fun hideDonationReminderCard() {
+        pageHeaderView.hideDonationReminderCard()
+        loadLeadImage()
+        parentFragment.updateHeaderTopMargin()
+        parentFragment.updateMessageCardHeight()
     }
 
     fun hide() {
@@ -207,6 +292,14 @@ class LeadImagesHandler(private val parentFragment: PageFragment,
 
     fun refreshCallToActionVisibility() {
         pageHeaderView.refreshCallToActionVisibility()
+    }
+
+    fun getDonationReminderCardViewHeight(adjustBottomMargin: Boolean = false): Float {
+        if (pageHeaderView.donationReminderCardViewHeight == 0) {
+            return 0f
+        }
+        val newMargin = DimenUtil.getToolbarHeightPx(activity).toFloat() / (if (isLeadImageEnabled) 1.3f else 1f)
+        return pageHeaderView.donationReminderCardViewHeight.toFloat() - if (adjustBottomMargin) newMargin else 0f
     }
 
     fun loadLeadImage() {
@@ -219,27 +312,28 @@ class LeadImagesHandler(private val parentFragment: PageFragment,
         } else {
             pageHeaderView.loadImage(null)
         }
+        parentFragment.updateMessageCardHeight()
     }
 
     fun openImageInGallery(language: String?) {
         if (isLeadImageEnabled) {
-            page?.pageProperties?.leadImageName?.let { imageName ->
+            page?.leadImageName?.let { imageName ->
                 title?.let {
                     val filename = "File:$imageName"
                     val wiki = language?.run { WikiSite.forLanguageCode(this) } ?: it.wikiSite
                     val hitInfo = JavaScriptActionHandler.ImageHitInfo(pageHeaderView.imageView.left.toFloat(),
                         pageHeaderView.imageView.top.toFloat(), leadImageWidth.toFloat(), leadImageHeight.toFloat(),
-                        leadImageUrl!!, true)
+                        leadImageUrl!!)
                     GalleryActivity.setTransitionInfo(hitInfo)
                     val options = ActivityOptionsCompat.makeSceneTransitionAnimation(activity, pageHeaderView.imageView, activity.getString(R.string.transition_page_gallery))
-                    callback?.onPageRequestGallery(it, filename, wiki, parentFragment.revision, GalleryActivity.SOURCE_LEAD_IMAGE, options)
+                    callback?.onPageRequestGallery(it, filename, wiki, parentFragment.revision, true, options)
                 }
             }
         }
     }
 
     fun dispose() {
-        disposables.clear()
+        handlerJob?.cancel()
         callToActionSourceSummary = null
         callToActionTargetSummary = null
         callToActionIsTranslation = false

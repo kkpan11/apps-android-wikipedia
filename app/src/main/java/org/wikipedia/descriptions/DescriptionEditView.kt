@@ -4,7 +4,6 @@ import android.app.Activity
 import android.content.Context
 import android.content.res.ColorStateList
 import android.graphics.Color
-import android.net.Uri
 import android.util.AttributeSet
 import android.view.LayoutInflater
 import android.view.inputmethod.EditorInfo
@@ -12,6 +11,7 @@ import android.widget.LinearLayout
 import androidx.appcompat.content.res.AppCompatResources
 import androidx.core.graphics.BlendModeColorFilterCompat
 import androidx.core.graphics.BlendModeCompat
+import androidx.core.net.toUri
 import androidx.core.view.isVisible
 import androidx.core.widget.ImageViewCompat
 import androidx.core.widget.addTextChangedListener
@@ -21,16 +21,22 @@ import org.wikipedia.WikipediaApp
 import org.wikipedia.analytics.eventplatform.MachineGeneratedArticleDescriptionsAnalyticsHelper
 import org.wikipedia.databinding.GroupCaptchaBinding
 import org.wikipedia.databinding.ViewDescriptionEditBinding
+import org.wikipedia.extensions.setLayoutDirectionByLang
 import org.wikipedia.language.LanguageUtil
 import org.wikipedia.mlkit.MlKitLanguageDetector
 import org.wikipedia.page.PageTitle
 import org.wikipedia.settings.Prefs
 import org.wikipedia.suggestededits.PageSummaryForEdit
-import org.wikipedia.util.*
+import org.wikipedia.util.DeviceUtil
+import org.wikipedia.util.DimenUtil
+import org.wikipedia.util.FeedbackUtil
+import org.wikipedia.util.ResourceUtil
+import org.wikipedia.util.StringUtil
+import org.wikipedia.util.UriUtil
 import org.wikipedia.views.SuggestedArticleDescriptionsDialog
-import java.util.*
+import java.util.Locale
 
-class DescriptionEditView : LinearLayout, MlKitLanguageDetector.Callback {
+class DescriptionEditView(context: Context, attrs: AttributeSet?) : LinearLayout(context, attrs), MlKitLanguageDetector.Callback {
     interface Callback {
         fun onSaveClick()
         fun onCancelClick()
@@ -39,17 +45,14 @@ class DescriptionEditView : LinearLayout, MlKitLanguageDetector.Callback {
         fun getAnalyticsHelper(): MachineGeneratedArticleDescriptionsAnalyticsHelper
     }
 
-    constructor(context: Context) : super(context)
-    constructor(context: Context, attrs: AttributeSet?) : super(context, attrs)
-    constructor(context: Context, attrs: AttributeSet?, defStyleAttr: Int) : super(context, attrs, defStyleAttr)
-
     private lateinit var pageTitle: PageTitle
     private lateinit var pageSummaryForEdit: PageSummaryForEdit
-    private lateinit var action: DescriptionEditActivity.Action
+    private var action: DescriptionEditActivity.Action? = null
     private val binding = ViewDescriptionEditBinding.inflate(LayoutInflater.from(context), this)
     private val mlKitLanguageDetector = MlKitLanguageDetector()
     private val languageDetectRunnable = Runnable { mlKitLanguageDetector.detectLanguageFromText(binding.viewDescriptionEditText.text.toString()) }
     private val textValidateRunnable = Runnable { validateText() }
+    private var suggestedDescriptionsProgressDrawable: CircularProgressDrawable? = null
     private var originalDescription: String? = null
     private var isTranslationEdit = false
     private var isLanguageWrong = false
@@ -64,6 +67,9 @@ class DescriptionEditView : LinearLayout, MlKitLanguageDetector.Callback {
         get() = binding.viewDescriptionEditText.text.toString().trim()
         set(text) {
             binding.viewDescriptionEditText.setText(text)
+            if (!text.isNullOrEmpty()) {
+                binding.viewDescriptionEditText.setSelection(text.length)
+            }
         }
 
     init {
@@ -107,9 +113,10 @@ class DescriptionEditView : LinearLayout, MlKitLanguageDetector.Callback {
         }
 
         binding.learnMoreButton.setOnClickListener {
-            UriUtil.visitInExternalBrowser(context, Uri.parse(WikipediaApp.instance.getString(if (action == DescriptionEditActivity.Action.ADD_DESCRIPTION ||
-                action == DescriptionEditActivity.Action.TRANSLATE_DESCRIPTION) R.string.description_edit_description_learn_more_url
-            else R.string.description_edit_image_caption_learn_more_url)))
+            UriUtil.visitInExternalBrowser(context, WikipediaApp.instance.getString(if (action == DescriptionEditActivity.Action.ADD_DESCRIPTION ||
+                action == DescriptionEditActivity.Action.TRANSLATE_DESCRIPTION)
+                if (pageTitle.wikiSite.languageCode == "en") R.string.short_description_help_url_en else R.string.description_edit_description_learn_more_url
+            else R.string.description_edit_image_caption_learn_more_url).toUri())
         }
     }
 
@@ -117,6 +124,8 @@ class DescriptionEditView : LinearLayout, MlKitLanguageDetector.Callback {
         super.onDetachedFromWindow()
         removeCallbacks(languageDetectRunnable)
         removeCallbacks(textValidateRunnable)
+        mlKitLanguageDetector.close()
+        stopSuggestedDescriptionsLoadingProgress()
     }
 
     fun setLoginCallback(callback: DescriptionEditLicenseView.Callback) {
@@ -130,6 +139,7 @@ class DescriptionEditView : LinearLayout, MlKitLanguageDetector.Callback {
         setHintText()
         description = originalDescription
         setReviewHeaderText(false)
+        binding.viewDescriptionEditTextLayout.counterMaxLength = resources.getInteger(if (pageTitle.wikiSite.languageCode == "en") R.integer.description_max_chars_en else R.integer.description_max_chars)
     }
 
     private fun setVoiceInput() {
@@ -227,12 +237,12 @@ class DescriptionEditView : LinearLayout, MlKitLanguageDetector.Callback {
         pageSummaryForEdit = if (isTranslationEdit) targetSummary!! else sourceSummary
         binding.viewDescriptionEditPageSummaryContainer.visibility = VISIBLE
         binding.viewDescriptionEditPageSummaryLabel.text = getLabelText(sourceSummary.lang)
-        binding.viewDescriptionEditPageSummary.text = StringUtil.strip(StringUtil.removeHTMLTags(if (isTranslationEdit || action == DescriptionEditActivity.Action.ADD_CAPTION) sourceSummary.description else sourceSummary.extractHtml))
+        binding.viewDescriptionEditPageSummary.text = StringUtil.removeHTMLTags(if (isTranslationEdit || action == DescriptionEditActivity.Action.ADD_CAPTION) sourceSummary.description else sourceSummary.extractHtml).trim()
         if (binding.viewDescriptionEditPageSummary.text.toString().isEmpty() || action == DescriptionEditActivity.Action.ADD_CAPTION &&
             !sourceSummary.pageTitle.description.isNullOrEmpty()) {
             binding.viewDescriptionEditPageSummaryContainer.visibility = GONE
         }
-        L10nUtil.setConditionalLayoutDirection(this, if (isTranslationEdit) sourceSummary.lang else pageTitle.wikiSite.languageCode)
+        setLayoutDirectionByLang(if (isTranslationEdit) sourceSummary.lang else pageTitle.wikiSite.languageCode)
 
         binding.viewDescriptionEditReadArticleBarContainer.setSummary(pageSummaryForEdit)
         binding.viewDescriptionEditReadArticleBarContainer.setOnClickListener { performReadArticleClick() }
@@ -320,6 +330,12 @@ class DescriptionEditView : LinearLayout, MlKitLanguageDetector.Callback {
 
     private fun validateText() {
         isTextValid = true
+        // T317462: accept ending punctuation for Czech descriptions
+        val punctuationList = if (pageTitle.wikiSite.languageCode == "cs") {
+            listOf(",", "!", "?")
+        } else {
+            listOf(".", ",", "!", "?")
+        }
         val text = binding.viewDescriptionEditText.text.toString().lowercase(Locale.getDefault()).trim()
         if (text.isEmpty()) {
             isTextValid = false
@@ -328,9 +344,11 @@ class DescriptionEditView : LinearLayout, MlKitLanguageDetector.Callback {
             isTextValid = false
             setError(context.getString(R.string.description_too_short))
         } else if ((action == DescriptionEditActivity.Action.ADD_DESCRIPTION || action == DescriptionEditActivity.Action.TRANSLATE_DESCRIPTION) &&
-            (listOf(".", ",", "!", "?").filter { text.endsWith(it) }).isNotEmpty()) {
+            punctuationList.any { text.endsWith(it) }) {
             isTextValid = false
             setError(context.getString(R.string.description_ends_with_punctuation))
+        } else if (pageTitle.wikiSite.languageCode == "en" && text.length > resources.getInteger(R.integer.description_max_chars_en)) {
+            setWarning(context.getString(R.string.description_too_long))
         } else if ((action == DescriptionEditActivity.Action.ADD_DESCRIPTION || action == DescriptionEditActivity.Action.TRANSLATE_DESCRIPTION) &&
             LanguageUtil.startsWithArticle(text, pageTitle.wikiSite.languageCode)) {
             setWarning(context.getString(R.string.description_starts_with_article))
@@ -419,11 +437,18 @@ class DescriptionEditView : LinearLayout, MlKitLanguageDetector.Callback {
     fun showSuggestedDescriptionsLoadingProgress() {
         binding.suggestedDescButton.isVisible = true
         binding.suggestedDescButton.isEnabled = false
+        stopSuggestedDescriptionsLoadingProgress()
         val drawable = CircularProgressDrawable(context)
         drawable.strokeWidth = DimenUtil.dpToPx(1.5f)
         drawable.colorFilter = BlendModeColorFilterCompat.createBlendModeColorFilterCompat(ResourceUtil.getThemedColor(context, R.attr.primary_color), BlendModeCompat.SRC_IN)
         binding.suggestedDescButton.chipIcon = drawable
         drawable.start()
+        suggestedDescriptionsProgressDrawable = drawable
+    }
+
+    private fun stopSuggestedDescriptionsLoadingProgress() {
+        suggestedDescriptionsProgressDrawable?.stop()
+        suggestedDescriptionsProgressDrawable = null
     }
 
      fun updateSuggestedDescriptionsButtonVisibility() {
@@ -432,12 +457,13 @@ class DescriptionEditView : LinearLayout, MlKitLanguageDetector.Callback {
 
     fun showSuggestedDescriptionsButton(firstSuggestion: String, secondSuggestion: String?) {
         binding.suggestedDescButton.isEnabled = true
+        stopSuggestedDescriptionsLoadingProgress()
         binding.suggestedDescButton.chipIcon = AppCompatResources.getDrawable(context, R.drawable.ic_robot_24)
         binding.suggestedDescButton.setOnClickListener {
             SuggestedArticleDescriptionsDialog(context as Activity, firstSuggestion, secondSuggestion, pageTitle, callback!!.getAnalyticsHelper()) { suggestion ->
                 binding.viewDescriptionEditText.setText(suggestion)
                 binding.viewDescriptionEditText.setSelection(binding.viewDescriptionEditText.text?.length ?: 0)
-                callback?.getAnalyticsHelper()?.logSuggestionChosen(context, suggestion, pageTitle)
+                callback?.getAnalyticsHelper()?.logSuggestionChosen(context, pageTitle)
                 wasSuggestionChosen = true
                 wasSuggestionModified = false
             }.show()

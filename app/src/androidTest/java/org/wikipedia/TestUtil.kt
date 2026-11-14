@@ -98,8 +98,7 @@ object TestUtil {
 
         device.executeShellCommand("su 0 settings put global airplane_mode_on " + if (enabled) "1" else "0")
         device.executeShellCommand("su 0 am broadcast -a android.intent.action.AIRPLANE_MODE")
-         */
-        /*
+
         Extremely hacky:
 
         device.openNotification()
@@ -121,6 +120,17 @@ object TestUtil {
 
         Thread.sleep(delaySecAfter * 1000)
         device.pressBack()
+    }
+
+    fun toggleInternet(enabled: Boolean, delaySecAfter: Long = 1) {
+        val device = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation())
+        if (enabled) {
+            device.executeShellCommand("svc wifi enable")
+            device.executeShellCommand("svc data enable")
+        } else {
+            device.executeShellCommand("svc wifi disable")
+            device.executeShellCommand("svc data disable")
+        }
     }
 
     internal class WithGrandparentMatcher constructor(private val grandparentMatcher: Matcher<View>) : TypeSafeMatcher<View>() {

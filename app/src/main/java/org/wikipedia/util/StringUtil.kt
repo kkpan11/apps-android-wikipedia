@@ -5,7 +5,6 @@ import android.graphics.Color
 import android.graphics.Typeface
 import android.icu.text.CompactDecimalFormat
 import android.location.Location
-import android.os.Build
 import android.text.Spanned
 import android.text.style.BackgroundColorSpan
 import android.text.style.ForegroundColorSpan
@@ -27,7 +26,6 @@ import java.text.Normalizer
 import java.util.EnumSet
 import java.util.Locale
 import kotlin.math.absoluteValue
-import kotlin.math.roundToInt
 
 object StringUtil {
     private const val CSV_DELIMITER = ","
@@ -48,11 +46,6 @@ object StringUtil {
 
     fun md5string(s: String): String {
         return s.encodeUtf8().md5().hex()
-    }
-
-    fun strip(str: CharSequence?): CharSequence {
-        // TODO: remove this function once Kotlin conversion of consumers is complete.
-        return if (str.isNullOrEmpty()) "" else str.trim()
     }
 
     fun intToHexStr(i: Int): String {
@@ -83,6 +76,10 @@ object StringUtil {
         return fromHtml(text).toString()
     }
 
+    fun removeBoldTags(text: String): String {
+        return text.replace("</?b(?:\\s+[^>]*)?>".toRegex(), "")
+    }
+
     fun removeStyleTags(text: String): String {
         return text.replace("<style.*?</style>".toRegex(), "")
     }
@@ -93,6 +90,20 @@ object StringUtil {
 
     fun sanitizeAbuseFilterCode(code: String): String {
         return code.replace("[⧼⧽]".toRegex(), "")
+    }
+
+    /**
+     * Convenience function for parsing wikitext that might contain external links (and ONLY
+     * external links), to save a round-trip call to the parse API.
+     */
+    fun parseWikitextExternalLinks(wikitext: String): String {
+        val pattern = """\[(\S+)(?:\s+([^]]+))?]""".toRegex()
+
+        return pattern.replace(wikitext) { match ->
+            val url = match.groupValues[1]
+            val displayText = match.groupValues[2].ifEmpty { url }
+            """<a href="$url">$displayText</a>"""
+        }
     }
 
     fun normalizedEquals(str1: String?, str2: String?): Boolean {
@@ -153,7 +164,7 @@ object StringUtil {
         }
     }
 
-    private fun isIndexInsideHtmlTag(text: String, index: Int): Boolean {
+    fun isIndexInsideHtmlTag(text: String, index: Int): Boolean {
         var tagStack = 0
         for (i in text.indices) {
             if (text[i] == '<') { tagStack++ } else if (text[i] == '>') { tagStack-- }
@@ -191,7 +202,8 @@ object StringUtil {
         val indices = IntArray(s.toByteArray(StandardCharsets.UTF_8).size)
         var ptr = 0
         var count = 0
-        for (i in s.indices) {
+        var i = 0
+        while (i < s.length) {
             val c = s.codePointAt(i)
             when {
                 c <= 0x7F -> count = 1
@@ -204,6 +216,7 @@ object StringUtil {
                     indices[ptr++] = i
                 }
             }
+            i += Character.charCount(c)
         }
         return indices
     }
@@ -213,26 +226,9 @@ object StringUtil {
     }
 
     fun getPageViewText(context: Context, pageViews: Long): String {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-            val primaryLocale = context.resources.configuration.locales[0]
-            val decimalFormat = CompactDecimalFormat.getInstance(primaryLocale, CompactDecimalFormat.CompactStyle.SHORT)
-            return decimalFormat.format(pageViews)
-        }
-        return when {
-            pageViews < 1000 -> pageViews.toString()
-            pageViews < 1000000 -> {
-                context.getString(
-                    R.string.view_top_read_card_pageviews_k_suffix,
-                    (pageViews / 1000f).roundToInt()
-                )
-            }
-            else -> {
-                context.getString(
-                    R.string.view_top_read_card_pageviews_m_suffix,
-                    (pageViews / 1000000f).roundToInt()
-                )
-            }
-        }
+        val primaryLocale = context.resources.configuration.locales[0]
+        val decimalFormat = CompactDecimalFormat.getInstance(primaryLocale, CompactDecimalFormat.CompactStyle.SHORT)
+        return decimalFormat.format(pageViews)
     }
 
     fun getDiffBytesText(context: Context, diffSize: Int): String {
@@ -266,5 +262,14 @@ object StringUtil {
             }
         }
         return null
+    }
+
+    fun extractStringFromStyle(style: String, snippet: String?): String? {
+        val searchString = Regex("""<span\s+class=["']$style["']\s*>(.*?)</span>""", RegexOption.DOT_MATCHES_ALL)
+            .find(snippet.orEmpty())
+            ?.groupValues
+            ?.getOrNull(1)
+            ?: return null
+        return fromHtml(searchString).toString()
     }
 }

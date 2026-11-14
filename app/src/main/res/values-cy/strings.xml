@@ -1,7 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Authors:
 * Afalau
+* Ceirios
 * Cymrodor
+* GwennoG
 * Johnogwen123
 * Lloffiwr
 * MuratTheTurkish
@@ -31,7 +33,7 @@
   <string name="page_error_back_to_main">Ewch yn ôl</string>
   <string name="error_back">Yn ôl</string>
   <string name="error_next">Nesaf</string>
-  <string name="menu_clear_all_history">Clirio\'r hanes</string>
+  <string name="menu_clear_all_history" fuzzy="true">Clirio\'r hanes</string>
   <string name="history_item_deleted">%s wedi ei dynnu o\'ch hanes</string>
   <string name="history_items_deleted">%d erthyglau wedi\'u tynnu o\'ch hanes</string>
   <string name="history_item_delete_undo">Dadwneud</string>
@@ -43,7 +45,7 @@
   <string name="wikimedia_commons">Comin Wicimedia</string>
   <string name="wikidata">Wicidata</string>
   <string name="dialog_title_clear_history">Clirio hanes y pori?</string>
-  <string name="dialog_message_clear_history">Ydych chi\'n siwr eich bod am glirio\'r hanes?</string>
+  <string name="dialog_message_clear_history" fuzzy="true">Ydych chi\'n siwr eich bod am glirio\'r hanes?</string>
   <string name="dialog_message_clear_history_yes">Ydw/Ie/Iawn</string>
   <string name="dialog_message_clear_history_no">Na</string>
   <string name="share_via">Rhannu drwy</string>
@@ -125,8 +127,8 @@
   <string name="login_username_hint">Enw defnyddiwr</string>
   <string name="login_password_hint">Cyfrinair</string>
   <string name="account_creation_password_hint">Cyfrinair</string>
-  <string name="login_2fa_hint">Cod dilysu 2-ffactor</string>
-  <string name="login_2fa_other_workflow_error_msg">Mae cod dilysu 2-ffactor yn angenrheidiol! Trowch nôl a mewngofnodwch gyda\'ch taleb 2FA (Cod dilysu 2-ffactor) a cheisiwch eto.</string>
+  <string name="login_2fa_hint" fuzzy="true">Cod dilysu 2-ffactor</string>
+  <string name="login_2fa_other_workflow_error_msg" fuzzy="true">Mae cod dilysu 2-ffactor yn angenrheidiol! Trowch nôl a mewngofnodwch gyda\'ch taleb 2FA (Cod dilysu 2-ffactor) a cheisiwch eto.</string>
   <string name="onboarding_card_login">Mewngofnodi</string>
   <string name="page_editing_login">Mewngofnodi</string>
   <string name="reading_lists_sync_login">Mewngofnodi</string>
@@ -244,8 +246,8 @@
   <string name="table_infobox">Ffeithiau sydyn</string>
   <string name="table_other">Rhagor o wybodaeth</string>
   <string name="table_close">Cau</string>
-  <string name="widget_name_featured_page">Dalen ddethol Wicipedia</string>
-  <string name="widget_title_featured_page">Dalen ddethol heddiw:</string>
+  <string name="widget_name_featured_page">Tudalen ddethol Wicipedia</string>
+  <string name="widget_title_featured_page">Tudalen ddethol heddiw:</string>
   <string name="widget_name_search">Chwilio ar Wicipedia</string>
   <string name="wiktionary_no_definitions_found">Dim canlyniadau.</string>
   <string name="alpha_update_notification_title">Diweddariad alffa ar gael</string>
@@ -288,6 +290,7 @@
   <string name="text_copied">Copiwyd y testun i\'r clipfwrdd.</string>
   <string name="button_continue_to_article">Darllen yr erthygl</string>
   <string name="button_continue_to_talk_page">Gweld tudalen sgwrs</string>
+  <string name="button_add_to_reading_list">Symud i restr ddarllen</string>
   <string name="button_get_directions">Ewch i mofyn cyfarwyddiadau</string>
   <string name="error_no_maps_app">Methwyd a chael hyd i apiau-canfod-cyfarwyddiadau.</string>
   <string name="preference_title_show_link_previews">Dangos rhagolygon dolennau</string>
@@ -341,8 +344,8 @@
   <string name="reading_list_menu_export">Allforio rhestr</string>
   <string name="reading_list_menu_select">Dewis</string>
   <string name="reading_list_name_sample">Fy rhestr ddarllen</string>
-  <string name="reading_list_name_hint">Enw ar y rhestr</string>
-  <string name="saved_list_empty_title">Dim rhestrau darllen eto</string>
+  <string name="reading_list_name_hint">Enw\'r rhestr hon</string>
+  <string name="saved_list_empty_title" fuzzy="true">Dim rhestrau darllen eto</string>
   <string name="reading_list_delete_lists_dialog_delete_button_text">Dileu</string>
   <string name="reading_lists_action_menu_export_lists">Allforio</string>
   <string name="reading_lists_preview_save_button">Cadw</string>
@@ -364,7 +367,7 @@
   <string name="description_edit_help_about_wikidata">Ynglŷn â Wicidata</string>
   <string name="image_recommendation_accept">Ie</string>
   <string name="image_recommendation_reject">Na</string>
-  <string name="image_recommendation_reject_title">Pam?</string>
+  <string name="image_recommendation_reject_title" fuzzy="true">Pam?</string>
   <string name="image_recommendation_reject_submit">Cyflwyno</string>
   <string name="edit_summary_added_image">Ychwanegu delwedd</string>
   <string name="insert_media_settings_caption">Pennawd y ddelwedd</string>
@@ -383,5 +386,5 @@
   <string name="patroller_tasks_filters_all_text">Popeth</string>
   <string name="data_opt_in_accept">Cytuno</string>
   <string name="data_opt_in_reject">Gwrthod</string>
-  <string name="places_survey_dialog_cancel">Canslo</string>
+  <string name="survey_dialog_cancel">Canslo</string>
 </resources>

@@ -4,20 +4,25 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
-import android.net.Uri
 import android.os.Bundle
 import android.view.Menu
 import android.view.MenuItem
 import android.view.ViewGroup
 import android.webkit.CookieManager
+import android.webkit.JsResult
+import android.webkit.WebChromeClient
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
 import android.webkit.WebView
+import androidx.activity.addCallback
+import androidx.core.net.toUri
 import androidx.core.view.isVisible
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import org.wikipedia.Constants
 import org.wikipedia.R
 import org.wikipedia.WikipediaApp
 import org.wikipedia.analytics.eventplatform.DonorExperienceEvent
+import org.wikipedia.analytics.testkitchen.TestKitchenAdapter
 import org.wikipedia.bridge.JavaScriptActionHandler
 import org.wikipedia.databinding.ActivitySingleWebViewBinding
 import org.wikipedia.dataclient.SharedPreferenceCookieManager
@@ -32,6 +37,7 @@ import org.wikipedia.page.PageViewModel
 import org.wikipedia.staticdata.MainPageNameData
 import org.wikipedia.util.StringUtil
 import org.wikipedia.util.UriUtil
+import org.wikipedia.yearinreview.presentation.YearInReviewViewModel
 
 class SingleWebViewActivity : BaseActivity() {
     private lateinit var binding: ActivitySingleWebViewBinding
@@ -59,6 +65,14 @@ class SingleWebViewActivity : BaseActivity() {
         pageTitleToLoadOnBackPress = intent.parcelableExtra(Constants.ARG_TITLE)
         blankLinkHandler = SingleWebViewLinkHandler(this, WikipediaApp.instance.wikiSite)
 
+        onBackPressedDispatcher.addCallback(this) {
+            if (!isWebForm && binding.webView.canGoBack()) {
+                binding.webView.goBack()
+                return@addCallback
+            }
+            goBack()
+        }
+
         binding.backButton.isVisible = showBackButton
         binding.backButton.setOnClickListener {
             goBack()
@@ -70,7 +84,7 @@ class SingleWebViewActivity : BaseActivity() {
             override val linkHandler get() = blankLinkHandler
 
             override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
-                if (isWebForm) {
+                if (isWebForm && !request?.url.toString().startsWith(targetUrl)) {
                     finish()
                     request?.let {
                         // Special case: If the URL is the main page, then just allow the activity to close,
@@ -113,6 +127,18 @@ class SingleWebViewActivity : BaseActivity() {
             }
         }
 
+        binding.webView.webChromeClient = object : WebChromeClient() {
+            override fun onJsConfirm(view: WebView?, url: String?, message: String?, result: JsResult?): Boolean {
+                MaterialAlertDialogBuilder(this@SingleWebViewActivity)
+                    .setMessage(message)
+                    .setPositiveButton(android.R.string.ok) { _, _ -> result?.confirm() }
+                    .setNegativeButton(android.R.string.cancel) { _, _ -> result?.cancel() }
+                    .setOnDismissListener { result?.cancel() }
+                    .show()
+                return true
+            }
+        }
+
         // Explicitly apply our cookies to the default CookieManager of the WebView.
         // This is because our custom WebViewClient doesn't allow intercepting POST requests
         // properly, so in the case of POST requests the cookies will be supplied automatically.
@@ -138,7 +164,7 @@ class SingleWebViewActivity : BaseActivity() {
         return when (item.itemId) {
             R.id.menu_in_new -> {
                 currentUrl?.let {
-                    UriUtil.visitInExternalBrowser(this@SingleWebViewActivity, Uri.parse(it))
+                    UriUtil.visitInExternalBrowser(this@SingleWebViewActivity, it.toUri())
                 }
                 true
             }
@@ -152,18 +178,21 @@ class SingleWebViewActivity : BaseActivity() {
         super.onDestroy()
     }
 
-    override fun onBackPressed() {
-        if (!isWebForm && binding.webView.canGoBack()) {
-            binding.webView.goBack()
-            return
-        }
-        goBack()
-        super.onBackPressed()
-    }
-
     private fun goBack() {
-        if (intent.getStringExtra(EXTRA_PAGE_CONTENT_INFO).orEmpty() == PAGE_CONTENT_SOURCE_DONOR_EXPERIENCE) {
-            DonorExperienceEvent.logAction("article_return_click", "webpay_processed")
+        if (!intent.getStringExtra(EXTRA_PAGE_CONTENT_INFO).isNullOrEmpty()) {
+            val extraPageContentInfo = intent.getStringExtra(EXTRA_PAGE_CONTENT_INFO)
+            when (extraPageContentInfo) {
+                PAGE_CONTENT_SOURCE_DONOR_EXPERIENCE -> {
+                    DonorExperienceEvent.logAction("article_return_click", "webpay_processed")
+                }
+                PAGE_CONTENT_SOURCE_YIR -> {
+                    YearInReviewViewModel.currentCampaignId?.let { campaignId ->
+                        TestKitchenAdapter.client.getInstrument("apps-year-in-review")
+                            .submitInteraction(action = "article_return_click", actionSource = "webpay_processed", actionContext = mapOf("campaign_id" to campaignId))
+                    }
+                }
+                else -> { }
+            }
         }
         pageTitleToLoadOnBackPress?.let {
             val entry = HistoryEntry(it, HistoryEntry.SOURCE_SINGLE_WEBVIEW)
@@ -181,7 +210,7 @@ class SingleWebViewActivity : BaseActivity() {
         }
     }
 
-    inner class SingleWebViewLinkHandler(context: Context, override var wikiSite: WikiSite) : LinkHandler(context) {
+    class SingleWebViewLinkHandler(context: Context, override var wikiSite: WikiSite) : LinkHandler(context) {
         override fun onPageLinkClicked(anchor: String, linkText: String) { }
         override fun onInternalLinkClicked(title: PageTitle) { }
         override fun onMediaLinkClicked(title: PageTitle) { }
@@ -193,6 +222,7 @@ class SingleWebViewActivity : BaseActivity() {
         const val EXTRA_SHOW_BACK_BUTTON = "goBack"
         const val EXTRA_PAGE_CONTENT_INFO = "pageContentInfo"
         const val PAGE_CONTENT_SOURCE_DONOR_EXPERIENCE = "donorExperience"
+        const val PAGE_CONTENT_SOURCE_YIR = "yearInReview"
         const val EXTRA_IS_WEB_FORM = "isWebForm"
 
         fun newIntent(context: Context, url: String, showBackButton: Boolean = false, pageTitleToLoadOnBackPress: PageTitle? = null,

@@ -6,7 +6,6 @@ import android.content.ComponentCallbacks2
 import android.content.res.Configuration
 import android.os.Build
 import android.os.Bundle
-import org.wikipedia.analytics.eventplatform.EventPlatformClient
 import org.wikipedia.main.MainActivity
 import org.wikipedia.settings.Prefs
 import org.wikipedia.theme.Theme
@@ -14,14 +13,19 @@ import org.wikipedia.theme.Theme
 class ActivityLifecycleHandler : ActivityLifecycleCallbacks, ComponentCallbacks2 {
 
     private var haveMainActivity = false
-    var isAnyActivityResumed = false
+    private var currentActivity: Activity? = null
 
     fun haveMainActivity(): Boolean {
         return haveMainActivity
     }
 
+    fun getResumedActivity(): Activity? {
+        return currentActivity
+    }
+
     override fun onActivityCreated(activity: Activity, savedInstanceState: Bundle?) {
         val app = WikipediaApp.instance
+        currentActivity = activity
         if (activity is MainActivity) {
             haveMainActivity = true
         }
@@ -29,7 +33,7 @@ class ActivityLifecycleHandler : ActivityLifecycleCallbacks, ComponentCallbacks2
             val currentTheme = app.currentTheme
             when (app.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) {
                 Configuration.UI_MODE_NIGHT_YES -> if (!app.currentTheme.isDark) {
-                    app.currentTheme = if (!app.unmarshalTheme(Prefs.previousThemeId).isDark) Theme.BLACK
+                    app.currentTheme = if (!app.unmarshalTheme(Prefs.previousThemeId).isDark) Theme.DARK
                     else app.unmarshalTheme(Prefs.previousThemeId)
                     Prefs.previousThemeId = currentTheme.marshallingId
                 }
@@ -45,11 +49,11 @@ class ActivityLifecycleHandler : ActivityLifecycleCallbacks, ComponentCallbacks2
     override fun onActivityStarted(activity: Activity) {}
 
     override fun onActivityResumed(activity: Activity) {
-        isAnyActivityResumed = true
+        currentActivity = activity
     }
 
     override fun onActivityPaused(activity: Activity) {
-        isAnyActivityResumed = false
+        currentActivity = null
     }
 
     override fun onActivityStopped(activity: Activity) {}
@@ -60,15 +64,12 @@ class ActivityLifecycleHandler : ActivityLifecycleCallbacks, ComponentCallbacks2
         if (activity is MainActivity) {
             haveMainActivity = false
         }
+        currentActivity = null
     }
 
     override fun onConfigurationChanged(configuration: Configuration) {}
 
     override fun onLowMemory() {}
 
-    override fun onTrimMemory(trimMemoryType: Int) {
-        if (trimMemoryType == ComponentCallbacks2.TRIM_MEMORY_UI_HIDDEN) {
-            EventPlatformClient.flushCachedEvents()
-        }
-    }
+    override fun onTrimMemory(trimMemoryType: Int) {}
 }

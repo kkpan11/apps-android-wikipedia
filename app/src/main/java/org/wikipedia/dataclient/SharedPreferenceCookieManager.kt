@@ -4,6 +4,7 @@ import okhttp3.Cookie
 import okhttp3.CookieJar
 import okhttp3.HttpUrl
 import okhttp3.HttpUrl.Companion.toHttpUrl
+import org.wikipedia.login.LoginClient
 import org.wikipedia.settings.Prefs
 import org.wikipedia.util.log.L
 
@@ -23,10 +24,20 @@ class SharedPreferenceCookieManager(
     }
 
     @Synchronized
-    fun getCookieByName(name: String): String? {
+    fun getCookieValueByName(name: String): String? {
         for (domainSpec in cookieJar.keys) {
-            for (cookie in cookieJar[domainSpec]!!) {
-                if (cookie.name == name) {
+            getCookieByName(name, domainSpec)?.let {
+                return it
+            }
+        }
+        return null
+    }
+
+    @Synchronized
+    fun getCookieByName(name: String, domainSpec: String, matchExactName: Boolean = true): String? {
+        cookieJar[domainSpec]?.let { cookies ->
+            for (cookie in cookies) {
+                if (if (matchExactName) cookie.name == name else cookie.name.contains(name, ignoreCase = false)) {
                     return cookie.value
                 }
             }
@@ -87,13 +98,16 @@ class SharedPreferenceCookieManager(
         val domain = url.toUri().authority
         for (domainSpec in cookieJar.keys) {
             val cookiesForDomainSpec = cookieJar[domainSpec]!!
-            if (domain.endsWith(domainSpec)) {
+            if (domain == domainSpec || domain.endsWith(".$domainSpec")) {
                 buildCookieList(cookieList, cookiesForDomainSpec, null)
-            } else if (domainSpec.endsWith(WikiSite.BASE_DOMAIN)) {
-                // For sites outside the wikipedia.org domain, transfer the centralauth cookies
-                // from wikipedia.org unconditionally.
+            } else if (Service.isWikimediaAuthority(domainSpec) && Service.isWikimediaAuthority(domain)) {
+                // Transfer CentralAuth cookies to any subdomains of .wikipedia.org
                 buildCookieList(cookieList, cookiesForDomainSpec, CENTRALAUTH_PREFIX)
             }
+        }
+        if (LoginClient.enqueueForceEmailAuth && (url.toString().contains("action=clientlogin"))) {
+            cookieList.add(Cookie.Builder().name("forceEmailAuth").value("1").domain(domain).secure().build())
+            LoginClient.enqueueForceEmailAuth = false
         }
         return cookieList
     }

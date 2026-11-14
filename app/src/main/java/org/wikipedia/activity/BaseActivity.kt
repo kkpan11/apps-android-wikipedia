@@ -1,7 +1,6 @@
 package org.wikipedia.activity
 
-import android.graphics.drawable.ColorDrawable
-import android.os.Build
+import android.content.Intent
 import android.os.Bundle
 import android.view.MenuItem
 import android.view.MotionEvent
@@ -10,79 +9,172 @@ import androidx.annotation.ColorInt
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.pm.ShortcutManagerCompat
+import androidx.core.graphics.drawable.toDrawable
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.skydoves.balloon.Balloon
-import io.reactivex.rxjava3.disposables.CompositeDisposable
-import io.reactivex.rxjava3.disposables.Disposable
-import io.reactivex.rxjava3.functions.Consumer
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.launch
+import org.wikimedia.testkitchen.instrument.InstrumentImpl
 import org.wikipedia.Constants
+import org.wikipedia.Constants.InvokeSource
 import org.wikipedia.R
 import org.wikipedia.WikipediaApp
 import org.wikipedia.analytics.BreadcrumbsContextHelper
 import org.wikipedia.analytics.eventplatform.BreadCrumbLogEvent
-import org.wikipedia.analytics.eventplatform.NotificationInteractionEvent
+import org.wikipedia.analytics.eventplatform.EventPlatformClient
+import org.wikipedia.analytics.testkitchen.TestKitchenAdapter
 import org.wikipedia.appshortcuts.AppShortcuts
 import org.wikipedia.auth.AccountUtil
+import org.wikipedia.concurrency.FlowEventBus
 import org.wikipedia.connectivity.ConnectionStateMonitor
-import org.wikipedia.events.*
+import org.wikipedia.createaccount.CreateAccountEncourageActivity
+import org.wikipedia.createaccount.CreateAccountEncourageViewModel
+import org.wikipedia.donate.DonateDialog
+import org.wikipedia.events.LoggedOutInBackgroundEvent
+import org.wikipedia.events.ReadingListsEnableDialogEvent
+import org.wikipedia.events.ReadingListsNoLongerSyncedEvent
+import org.wikipedia.events.SplitLargeListsEvent
+import org.wikipedia.events.ThemeFontChangeEvent
+import org.wikipedia.events.UnreadNotificationsEvent
+import org.wikipedia.games.onthisday.OnThisDayGameResultFragment
 import org.wikipedia.login.LoginActivity
 import org.wikipedia.main.MainActivity
+import org.wikipedia.notifications.NotificationCategory
+import org.wikipedia.notifications.NotificationPresenter
+import org.wikipedia.notifications.experiment.NotificationsExperimentAbTest
+import org.wikipedia.notifications.experiment.NotificationsExperimentHelper
+import org.wikipedia.notifications.experiment.NotificationsExperimentMostReadAbTest
+import org.wikipedia.page.ExclusiveBottomSheetPresenter
+import org.wikipedia.page.PageActivity
 import org.wikipedia.readinglist.ReadingListSyncBehaviorDialogs
-import org.wikipedia.readinglist.ReadingListsReceiveSurveyHelper
-import org.wikipedia.readinglist.ReadingListsShareSurveyHelper
 import org.wikipedia.readinglist.sync.ReadingListSyncAdapter
 import org.wikipedia.readinglist.sync.ReadingListSyncEvent
 import org.wikipedia.recurring.RecurringTasksExecutor
 import org.wikipedia.richtext.CustomHtmlParser
 import org.wikipedia.settings.Prefs
-import org.wikipedia.settings.SiteInfoClient
 import org.wikipedia.theme.Theme
 import org.wikipedia.util.DeviceUtil
 import org.wikipedia.util.FeedbackUtil
 import org.wikipedia.util.ResourceUtil
 import org.wikipedia.views.ImageZoomHelper
+import org.wikipedia.widgets.readingchallenge.ReadingChallengeInstallWidgetDialog
+import org.wikipedia.widgets.readingchallenge.ReadingChallengeOnboardingActivity
+import org.wikipedia.widgets.readingchallenge.ReadingChallengeWidgetRepository
+import org.wikipedia.yearinreview.presentation.YearInReviewOnboardingActivity
+import org.wikipedia.yearinreview.presentation.YearInReviewViewModel
 
 abstract class BaseActivity : AppCompatActivity(), ConnectionStateMonitor.Callback {
     interface Callback {
         fun onPermissionResult(activity: BaseActivity, isGranted: Boolean)
     }
-    private lateinit var exclusiveBusMethods: ExclusiveBusConsumer
-    private val disposables = CompositeDisposable()
     private var currentTooltip: Balloon? = null
     private var imageZoomHelper: ImageZoomHelper? = null
     var callback: Callback? = null
+
+    // For subclasses to create instruments that they would like to persist for the lifetime of the activity.
+    protected var _instrument: InstrumentImpl? = null
 
     val requestPermissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
             callback?.onPermissionResult(this, isGranted)
     }
 
+    private val requestDonateActivity = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
+        if (it.resultCode == RESULT_OK) {
+            ExclusiveBottomSheetPresenter.dismiss(supportFragmentManager)
+            FeedbackUtil.showMessage(this, R.string.donate_gpay_success_message)
+        }
+    }
+
+    private val requestReadingChallengeActivity = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
+        if (ReadingChallengeWidgetRepository.shouldShowWidgetInstallDialog()) {
+            ExclusiveBottomSheetPresenter.dismiss(supportFragmentManager)
+            ExclusiveBottomSheetPresenter.show(supportFragmentManager,
+                ReadingChallengeInstallWidgetDialog()
+            )
+        }
+    }
+
+    private val notificationPermissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        // TODO: Show message(s) to the user if they deny the permission
+    }
+
+    private val yearInReviewLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
+        if (it.resultCode == RESULT_CANCELED) {
+            FeedbackUtil.showMessage(this, getString(R.string.year_in_review_get_started_later_activity))
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        exclusiveBusMethods = ExclusiveBusConsumer()
-        disposables.add(WikipediaApp.instance.bus.subscribe(NonExclusiveBusConsumer()))
+        if (!DeviceUtil.assertAppContext(this, true)) {
+            finish()
+            return
+        }
+
         setTheme()
         removeSplashBackground()
 
         if (AppShortcuts.ACTION_APP_SHORTCUT == intent.action) {
-            intent.putExtra(Constants.INTENT_EXTRA_INVOKE_SOURCE, Constants.InvokeSource.APP_SHORTCUTS)
+            intent.putExtra(Constants.INTENT_EXTRA_INVOKE_SOURCE, InvokeSource.APP_SHORTCUTS)
             val shortcutId = intent.getStringExtra(AppShortcuts.APP_SHORTCUT_ID)
             if (!shortcutId.isNullOrEmpty()) {
                 ShortcutManagerCompat.reportShortcutUsed(applicationContext, shortcutId)
             }
         }
 
-        supportActionBar?.setDisplayHomeAsUpEnabled(true)
-        if (savedInstanceState == null) {
-            NotificationInteractionEvent.processIntent(intent)
+        val invokeSource = intent.getSerializableExtra(Constants.INTENT_EXTRA_INVOKE_SOURCE) as InvokeSource?
+        invokeSource?.let {
+            when (it) {
+                InvokeSource.WIDGET -> {
+                    val widgetType = intent.getStringExtra(Constants.INTENT_WIDGET_TYPE)
+                    TestKitchenAdapter.client.getInstrument("apps-open")
+                        .submitInteraction(action = "app_open", actionSource = "widget", actionSubtype = widgetType)
+                }
+                InvokeSource.NOTIFICATION -> {
+                    val notificationCategory = intent.getSerializableExtra(Constants.INTENT_EXTRA_NOTIFICATION_CATEGORY) as NotificationCategory?
+                    val subType = when (notificationCategory) {
+                        NotificationCategory.GAMES -> "game"
+                        NotificationCategory.RECOMMENDED_READING_LISTS -> "discover"
+                        NotificationCategory.WEEKLY_MOST_READ -> "trending"
+                        else -> null
+                    }
+                    TestKitchenAdapter.client.getInstrument("apps-open")
+                        .also { instrument ->
+                            when (notificationCategory) {
+                                NotificationCategory.RECOMMENDED_READING_LISTS -> NotificationsExperimentAbTest().setExperimentIfEligible(instrument)
+                                NotificationCategory.WEEKLY_MOST_READ -> NotificationsExperimentMostReadAbTest().setExperimentIfEligible(instrument)
+                                else -> { }
+                            }
+                        }
+                        .submitInteraction(
+                            action = "app_open",
+                            actionSource = "notification",
+                            actionSubtype = subType
+                        )
+                }
+                InvokeSource.APP_SHORTCUTS -> {
+                    val shortcutId = intent.getStringExtra(AppShortcuts.APP_SHORTCUT_ID)
+                    TestKitchenAdapter.client.getInstrument("apps-open")
+                        .submitInteraction(action = "app_open", actionSource = "shortcut", actionSubtype = shortcutId)
+                }
+                else -> { }
+            }
         }
 
+        supportActionBar?.setDisplayHomeAsUpEnabled(true)
+
         // Conditionally execute all recurring tasks
-        RecurringTasksExecutor(WikipediaApp.instance).run()
+        RecurringTasksExecutor().run()
         if (Prefs.isReadingListsFirstTimeSync && AccountUtil.isLoggedIn) {
             Prefs.isReadingListsFirstTimeSync = false
             Prefs.isReadingListSyncEnabled = true
             ReadingListSyncAdapter.manualSyncWithForce()
         }
+        NotificationsExperimentAbTest().maybeRescheduleRecommendedReadingListNotification(this)
+        NotificationsExperimentHelper.maybeScheduleWeeklyMostReadNotification(this)
 
         WikipediaApp.instance.connectionStateMonitor.registerCallback(this)
 
@@ -90,55 +182,91 @@ abstract class BaseActivity : AppCompatActivity(), ConnectionStateMonitor.Callba
         setStatusBarColor(ResourceUtil.getThemedColor(this, R.attr.paper_color))
         setNavigationBarColor(ResourceUtil.getThemedColor(this, R.attr.paper_color))
         maybeShowLoggedOutInBackgroundDialog()
+        maybeShowAnnouncement(this)
 
-        if (ReadingListsShareSurveyHelper.shouldShowSurvey(this)) {
-            ReadingListsShareSurveyHelper.maybeShowSurvey(this)
-        } else {
-            ReadingListsReceiveSurveyHelper.maybeShowSurvey(this)
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.CREATED) {
+                FlowEventBus.events.collectLatest { event ->
+                    if (event is ThemeFontChangeEvent) {
+                        ActivityCompat.recreate(this@BaseActivity)
+                    }
+                }
+            }
         }
 
-        Prefs.localClassName = localClassName
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.RESUMED) {
+                FlowEventBus.events.collectLatest { event ->
+                    when (event) {
+                        is SplitLargeListsEvent -> {
+                            MaterialAlertDialogBuilder(this@BaseActivity)
+                                .setMessage(getString(R.string.split_reading_list_message, Constants.MAX_READING_LIST_ARTICLE_LIMIT))
+                                .setPositiveButton(R.string.reading_list_split_dialog_ok_button_text, null)
+                                .show()
+                        }
+                        is ReadingListsNoLongerSyncedEvent -> {
+                            ReadingListSyncBehaviorDialogs.detectedRemoteTornDownDialog(this@BaseActivity)
+                        }
+                        is ReadingListsEnableDialogEvent, (this@BaseActivity is MainActivity) -> {
+                            ReadingListSyncBehaviorDialogs.promptEnableSyncDialog(this@BaseActivity)
+                        }
+                        is LoggedOutInBackgroundEvent -> {
+                            maybeShowLoggedOutInBackgroundDialog()
+                        }
+                        is ReadingListSyncEvent -> {
+                            if (event.showMessage && !Prefs.isSuggestedEditsHighestPriorityEnabled) {
+                                FeedbackUtil.makeSnackbar(this@BaseActivity, getString(R.string.reading_list_toast_last_sync)).show()
+                            }
+                        }
+                        is UnreadNotificationsEvent -> {
+                            runOnUiThread {
+                                if (!isDestroyed) {
+                                    onUnreadNotification()
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 
     override fun onDestroy() {
         WikipediaApp.instance.connectionStateMonitor.unregisterCallback(this)
-        disposables.dispose()
-        if (EXCLUSIVE_BUS_METHODS === exclusiveBusMethods) {
-            unregisterExclusiveBusMethods()
-        }
         CustomHtmlParser.pruneBitmaps(this)
         super.onDestroy()
     }
 
-    override fun onStop() {
+    override fun onPause() {
+        super.onPause()
         WikipediaApp.instance.appSessionEvent.persistSession()
-        super.onStop()
+        TestKitchenAdapter.client.onAppPause()
+        EventPlatformClient.flushCachedEvents()
     }
 
     override fun onResume() {
         super.onResume()
         WikipediaApp.instance.appSessionEvent.touchSession()
+        TestKitchenAdapter.client.onAppResume()
         BreadCrumbLogEvent.logScreenShown(this)
+        TestKitchenAdapter.client.getInstrument("apps-open")
+            .submitInteraction(action = "app_open", actionSource = "background",
+                actionSubtype = this::class.java.simpleName)
+    }
 
-        // allow this activity's exclusive bus methods to override any existing ones.
-        unregisterExclusiveBusMethods()
-        EXCLUSIVE_BUS_METHODS = exclusiveBusMethods
-        EXCLUSIVE_DISPOSABLE = WikipediaApp.instance.bus.subscribe(EXCLUSIVE_BUS_METHODS!!)
+    override fun onStart() {
+        super.onStart()
+        NotificationPresenter.maybeRequestPermission(this, notificationPermissionLauncher)
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         return when (item.itemId) {
             android.R.id.home -> {
-                onBackPressed()
+                onBackPressedDispatcher.onBackPressed()
                 true
             }
             else -> false
         }
-    }
-
-    override fun onBackPressed() {
-        super.onBackPressed()
-        BreadCrumbLogEvent.logBackPress(this)
     }
 
     override fun dispatchTouchEvent(event: MotionEvent): Boolean {
@@ -155,10 +283,15 @@ abstract class BaseActivity : AppCompatActivity(), ConnectionStateMonitor.Callba
         return super.dispatchTouchEvent(event)
     }
 
-    protected fun setStatusBarColor(@ColorInt color: Int) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            window.statusBarColor = color
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (resultCode == RESULT_OK && data?.hasExtra(OnThisDayGameResultFragment.EXTRA_GAME_COMPLETED) == true) {
+            OnThisDayGameResultFragment.maybeShowOnThisDayGameEndContent(this)
         }
+    }
+
+    protected fun setStatusBarColor(@ColorInt color: Int) {
+        window.statusBarColor = color
     }
 
     protected fun setNavigationBarColor(@ColorInt color: Int) {
@@ -175,27 +308,50 @@ abstract class BaseActivity : AppCompatActivity(), ConnectionStateMonitor.Callba
 
     override fun onGoOnline() {}
 
-    private fun removeSplashBackground() {
-        window.setBackgroundDrawable(ColorDrawable(ResourceUtil.getThemedColor(this, R.attr.paper_color)))
+    fun launchDonateDialog(campaignId: String? = null, donateUrl: String? = null) {
+        ExclusiveBottomSheetPresenter.show(supportFragmentManager, DonateDialog.newInstance(campaignId, donateUrl))
     }
 
-    private fun unregisterExclusiveBusMethods() {
-        EXCLUSIVE_DISPOSABLE?.dispose()
-        EXCLUSIVE_DISPOSABLE = null
-        EXCLUSIVE_BUS_METHODS = null
+    fun launchDonateActivity(intent: Intent) {
+        requestDonateActivity.launch(intent)
+    }
+
+    fun getInstrument(): InstrumentImpl? {
+        return _instrument
+    }
+
+    protected fun showReadingChallenge() {
+        requestReadingChallengeActivity.launch(ReadingChallengeOnboardingActivity
+            .newIntent(this)
+            .setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP))
+    }
+
+    private fun removeSplashBackground() {
+        window.setBackgroundDrawable(ResourceUtil.getThemedColor(this, R.attr.paper_color).toDrawable())
     }
 
     private fun maybeShowLoggedOutInBackgroundDialog() {
-        if (Prefs.loggedOutInBackground) {
-            Prefs.loggedOutInBackground = false
-            MaterialAlertDialogBuilder(this)
-                    .setCancelable(false)
-                    .setTitle(R.string.logged_out_in_background_title)
-                    .setMessage(R.string.logged_out_in_background_dialog)
-                    .setPositiveButton(R.string.logged_out_in_background_login) { _, _ -> startActivity(LoginActivity.newIntent(this@BaseActivity, LoginActivity.SOURCE_LOGOUT_BACKGROUND)) }
-                    .setNegativeButton(R.string.logged_out_in_background_cancel, null)
-                    .show()
-        }
+        if (!Prefs.queueLoggedOutInBackgroundDialog || isDestroyed || this is LoginActivity)
+            return
+        Prefs.queueLoggedOutInBackgroundDialog = false
+
+        val instrument = TestKitchenAdapter.client.getInstrument("apps-authentication")
+            .setDefaultActionSource("logout_background_dialog")
+            .startFunnel("logout_account_background")
+        instrument.submitInteraction("impression")
+
+        MaterialAlertDialogBuilder(this)
+                .setCancelable(false)
+                .setTitle(R.string.logged_out_in_background_title)
+                .setMessage(R.string.logged_out_in_background_dialog)
+                .setPositiveButton(R.string.logged_out_in_background_login) { _, _ ->
+                    instrument.submitInteraction("click", elementId = "login_button")
+                    startActivity(LoginActivity.newIntent(this@BaseActivity, LoginActivity.SOURCE_LOGOUT_BACKGROUND))
+                }
+                .setNegativeButton(R.string.logged_out_in_background_cancel) { _, _ ->
+                    instrument.submitInteraction("click", elementId = "cancel")
+                }
+                .show()
     }
 
     private fun dismissCurrentTooltip() {
@@ -212,51 +368,35 @@ abstract class BaseActivity : AppCompatActivity(), ConnectionStateMonitor.Callba
         imageZoomHelper = ImageZoomHelper(this)
     }
 
+    fun maybeShowAnnouncement(activity: BaseActivity) {
+        // Announcements may only be shown on top of these activities:
+        if (listOf(
+                MainActivity::class,
+                PageActivity::class
+        ).none { it.isInstance(activity) }) {
+            return
+        }
+
+        if (Prefs.isInitialOnboardingEnabled) return
+        if (!Prefs.isExploreFeedUpdatePromptShown) return
+
+        val isExternalArticleLink = activity is PageActivity &&
+                activity.intent.action == Intent.ACTION_VIEW &&
+                activity.intent.data != null
+
+        lifecycleScope.launch {
+            when {
+                ReadingChallengeWidgetRepository.shouldShowOnboardingDialog() -> showReadingChallenge()
+                YearInReviewViewModel.canShowEntryPoint &&
+                        !Prefs.yearInReviewVisited -> {
+                    yearInReviewLauncher.launch(YearInReviewOnboardingActivity.newIntent(this@BaseActivity))
+                }
+                !isExternalArticleLink && CreateAccountEncourageViewModel.shouldShow() -> {
+                    startActivity(CreateAccountEncourageActivity.newIntent(this@BaseActivity))
+                }
+            }
+        }
+    }
+
     open fun onUnreadNotification() { }
-
-    /**
-     * Bus consumer that should be registered by all created activities.
-     */
-    private inner class NonExclusiveBusConsumer : Consumer<Any> {
-        override fun accept(event: Any) {
-            if (event is ThemeFontChangeEvent) {
-                ActivityCompat.recreate(this@BaseActivity)
-            }
-        }
-    }
-
-    /**
-     * Bus methods that should be caught only by the topmost activity.
-     */
-    private inner class ExclusiveBusConsumer : Consumer<Any> {
-        override fun accept(event: Any) {
-            if (event is SplitLargeListsEvent) {
-                MaterialAlertDialogBuilder(this@BaseActivity)
-                        .setMessage(getString(R.string.split_reading_list_message, SiteInfoClient.maxPagesPerReadingList))
-                        .setPositiveButton(R.string.reading_list_split_dialog_ok_button_text, null)
-                        .show()
-            } else if (event is ReadingListsNoLongerSyncedEvent) {
-                ReadingListSyncBehaviorDialogs.detectedRemoteTornDownDialog(this@BaseActivity)
-            } else if (event is ReadingListsEnableDialogEvent && this@BaseActivity is MainActivity) {
-                ReadingListSyncBehaviorDialogs.promptEnableSyncDialog(this@BaseActivity)
-            } else if (event is LoggedOutInBackgroundEvent) {
-                maybeShowLoggedOutInBackgroundDialog()
-            } else if (event is ReadingListSyncEvent) {
-                if (event.showMessage && !Prefs.isSuggestedEditsHighestPriorityEnabled) {
-                    FeedbackUtil.makeSnackbar(this@BaseActivity, getString(R.string.reading_list_toast_last_sync)).show()
-                }
-            } else if (event is UnreadNotificationsEvent) {
-                runOnUiThread {
-                    if (!isDestroyed) {
-                        onUnreadNotification()
-                    }
-                }
-            }
-        }
-    }
-
-    companion object {
-        private var EXCLUSIVE_BUS_METHODS: ExclusiveBusConsumer? = null
-        private var EXCLUSIVE_DISPOSABLE: Disposable? = null
-    }
 }

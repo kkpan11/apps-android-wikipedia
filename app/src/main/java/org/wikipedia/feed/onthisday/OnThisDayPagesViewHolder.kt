@@ -1,12 +1,11 @@
 package org.wikipedia.feed.onthisday
 
-import android.app.Activity
 import android.app.ActivityOptions
 import android.net.Uri
 import android.view.View
 import android.widget.FrameLayout
 import android.widget.TextView
-import androidx.fragment.app.FragmentManager
+import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.RecyclerView
 import org.wikipedia.Constants
 import org.wikipedia.R
@@ -15,8 +14,7 @@ import org.wikipedia.dataclient.page.PageSummary
 import org.wikipedia.history.HistoryEntry
 import org.wikipedia.page.PageActivity
 import org.wikipedia.readinglist.LongPressMenu
-import org.wikipedia.readinglist.ReadingListBehaviorsUtil
-import org.wikipedia.readinglist.database.ReadingListPage
+import org.wikipedia.readinglist.SaveArticleSheetDialog
 import org.wikipedia.util.DeviceUtil
 import org.wikipedia.util.DimenUtil
 import org.wikipedia.util.FeedbackUtil
@@ -26,8 +24,7 @@ import org.wikipedia.util.TransitionUtil
 import org.wikipedia.views.FaceAndColorDetectImageView
 
 class OnThisDayPagesViewHolder(
-    private val activity: Activity,
-    private val fragmentManager: FragmentManager,
+    private val activity: AppCompatActivity,
     v: View,
     private val wiki: WikiSite
 ) : RecyclerView.ViewHolder(v) {
@@ -98,14 +95,8 @@ class OnThisDayPagesViewHolder(
                     FeedbackUtil.showMessage(activity, R.string.article_opened_in_background_tab)
                 }
 
-                override fun onAddRequest(entry: HistoryEntry, addToDefault: Boolean) {
-                    ReadingListBehaviorsUtil.addToDefaultList(activity, entry.title, addToDefault, Constants.InvokeSource.ON_THIS_DAY_ACTIVITY)
-                }
-
-                override fun onMoveRequest(page: ReadingListPage?, entry: HistoryEntry) {
-                    page?.let {
-                        ReadingListBehaviorsUtil.moveToList(activity, it.listId, entry.title, Constants.InvokeSource.ON_THIS_DAY_ACTIVITY)
-                    }
+                override fun onSaveRequest(entry: HistoryEntry) {
+                    SaveArticleSheetDialog.show(activity, entry.title)
                 }
             }).show(entry)
         }

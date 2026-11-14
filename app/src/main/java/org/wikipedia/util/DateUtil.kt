@@ -2,10 +2,9 @@ package org.wikipedia.util
 
 import android.content.Context
 import android.icu.text.RelativeDateTimeFormatter
-import android.os.Build
 import android.text.format.DateFormat
-import org.wikipedia.R
 import org.wikipedia.WikipediaApp
+import org.wikipedia.extensions.getResources
 import org.wikipedia.feed.model.UtcDate
 import java.text.SimpleDateFormat
 import java.time.Instant
@@ -25,7 +24,6 @@ import java.util.concurrent.ConcurrentHashMap
 
 object DateUtil {
     private val DATE_FORMATS = ConcurrentHashMap<String, SimpleDateFormat>()
-    private val DATE_TIME_FORMATTERS = ConcurrentHashMap<String, DateTimeFormatter>()
 
     // TODO: Switch to DateTimeFormatter when minSdk = 26.
     fun iso8601DateParse(date: String): Date {
@@ -49,7 +47,7 @@ object DateUtil {
     }
 
     fun getFeedCardShortDateString(date: Calendar): String {
-        return getExtraShortDateString(date.time)
+        return getDateStringWithSkeletonPattern(date.time, "MMM d")
     }
 
     fun getMDYDateString(date: Date): String {
@@ -57,6 +55,18 @@ object DateUtil {
     }
 
     fun getMonthOnlyDateString(date: Date): String {
+        return getDateStringWithSkeletonPattern(date, "MMMM d")
+    }
+
+    fun getMonthWithYearString(date: Date): String {
+        return getDateStringWithSkeletonPattern(date, "MM/yyyy")
+    }
+
+    fun getMonthOnlyDateStringFromTimeString(dateStr: String): String {
+        return getMonthOnlyDateString(SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).parse(dateStr)!!)
+    }
+
+    fun getMonthOnlyDateString(date: LocalDate): String {
         return getDateStringWithSkeletonPattern(date, "MMMM d")
     }
 
@@ -68,12 +78,13 @@ object DateUtil {
         return getDateStringWithSkeletonPattern(date, "yyyy")
     }
 
-    fun getYMDDateString(date: Date): String {
-        return getCachedDateFormat("yyyyMMdd", Locale.ROOT, true).format(date)
+    fun getYMDDateString(date: LocalDate): String {
+        return getCachedDateTimeFormatter("yyyyMMdd", Locale.getDefault(), utc = false, skeleton = false)
+            .format(date)
     }
 
-    private fun getExtraShortDateString(date: Date): String {
-        return getDateStringWithSkeletonPattern(date, "MMM d")
+    fun getMMMMdYYYY(date: Date, utc: Boolean = true): String {
+        return getCachedDateFormat("MMMM d, yyyy", Locale.getDefault(), utc).format(date)
     }
 
     fun getTimeString(context: Context, date: Date): String {
@@ -84,6 +95,11 @@ object DateUtil {
     fun getTimeString(context: Context, localDateTime: LocalDateTime): String {
         val datePattern = if (DateFormat.is24HourFormat(context)) "HH:mm" else "hh:mm a"
         return getDateStringWithSkeletonPattern(localDateTime, datePattern)
+    }
+
+    fun getTimeString(context: Context, localDateTime: LocalDateTime, locale: Locale): String {
+        val timePattern = if (DateFormat.is24HourFormat(context)) "HH:mm" else "hh:mm a"
+        return DateTimeFormatter.ofPattern(DateFormat.getBestDateTimePattern(locale, timePattern), locale).format(localDateTime)
     }
 
     fun getShortDayWithTimeString(dateStr: String): String {
@@ -130,10 +146,8 @@ object DateUtil {
     }
 
     private fun getCachedDateTimeFormatter(pattern: String, locale: Locale, utc: Boolean, skeleton: Boolean = false): DateTimeFormatter {
-        return DATE_TIME_FORMATTERS.getOrPut(pattern) {
-            val dtf = DateTimeFormatter.ofPattern(if (skeleton) DateFormat.getBestDateTimePattern(locale, pattern) else pattern, locale)
-            return if (utc) dtf.withZone(ZoneOffset.UTC) else dtf
-        }
+        val dtf = DateTimeFormatter.ofPattern(if (skeleton) DateFormat.getBestDateTimePattern(locale, pattern) else pattern, locale)
+        return if (utc) dtf.withZone(ZoneOffset.UTC) else dtf
     }
 
     fun getShortDateString(date: Date): String {
@@ -161,24 +175,23 @@ object DateUtil {
     }
 
     fun yearToStringWithEra(year: Int): String {
-        val cal: Calendar = GregorianCalendar(year, 1, 1)
+        val cal: Calendar = GregorianCalendar(if (year < 0) year + 1 else year, 1, 1)
         return getDateStringWithSkeletonPattern(cal.time, if (year < 0) "y GG" else "y")
     }
 
-    fun getYearDifferenceString(year: Int, languageCode: String): String {
+    fun getYearDifferenceString(context: Context, year: Int, languageCode: String): String {
         val diffInYears = Calendar.getInstance()[Calendar.YEAR] - year
-        val targetResource = L10nUtil.getResourcesForWikiLang(languageCode) ?: WikipediaApp.instance.resources
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-            val firstMatchLocaleInstance = RelativeDateTimeFormatter.getInstance(targetResource.configuration.locales.getFirstMatch(arrayOf(languageCode)))
-            when (diffInYears) {
-                0 -> firstMatchLocaleInstance.format(RelativeDateTimeFormatter.Direction.THIS, RelativeDateTimeFormatter.AbsoluteUnit.YEAR)
-                1 -> firstMatchLocaleInstance.format(RelativeDateTimeFormatter.Direction.LAST, RelativeDateTimeFormatter.AbsoluteUnit.YEAR)
-                -1 -> firstMatchLocaleInstance.format(RelativeDateTimeFormatter.Direction.NEXT, RelativeDateTimeFormatter.AbsoluteUnit.YEAR)
-                else -> firstMatchLocaleInstance.format(diffInYears.toDouble(), RelativeDateTimeFormatter.Direction.LAST, RelativeDateTimeFormatter.RelativeUnit.YEARS)
-            }
-        } else {
-            return if (diffInYears == 0) L10nUtil.getStringForArticleLanguage(languageCode, R.string.this_year)
-            else targetResource.getQuantityString(R.plurals.diff_years, diffInYears, diffInYears)
+        val targetResource = context.getResources(languageCode)
+        val firstMatchLocaleInstance = RelativeDateTimeFormatter.getInstance(targetResource.configuration.locales.getFirstMatch(arrayOf(languageCode)))
+        return when (diffInYears) {
+            0 -> firstMatchLocaleInstance.format(RelativeDateTimeFormatter.Direction.THIS, RelativeDateTimeFormatter.AbsoluteUnit.YEAR)
+            1 -> firstMatchLocaleInstance.format(RelativeDateTimeFormatter.Direction.LAST, RelativeDateTimeFormatter.AbsoluteUnit.YEAR)
+            -1 -> firstMatchLocaleInstance.format(RelativeDateTimeFormatter.Direction.NEXT, RelativeDateTimeFormatter.AbsoluteUnit.YEAR)
+            else -> firstMatchLocaleInstance.format(diffInYears.toDouble(), RelativeDateTimeFormatter.Direction.LAST, RelativeDateTimeFormatter.RelativeUnit.YEARS)
         }
+    }
+
+    fun getWeekdayMonthDayDateString(date: LocalDate, locale: Locale): String {
+        return DateTimeFormatter.ofPattern(DateFormat.getBestDateTimePattern(locale, "EEEE, MMMM d"), locale).format(date)
     }
 }

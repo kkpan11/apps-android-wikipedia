@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Authors:
 * 12imom
+* Dbrant
 * Patriot Kor
 * Гусейн
 -->
@@ -28,7 +29,7 @@
   <string name="page_error_back_to_main">Bə dumo</string>
   <string name="error_back">Bə dumo</string>
   <string name="error_next">Dumotono še</string>
-  <string name="menu_clear_all_history">Tarixi mole</string>
+  <string name="menu_clear_all_history" fuzzy="true">Tarixi mole</string>
   <string name="history_item_deleted">Məǧolə \"%s\" molə byə ce dijə kardə tarixonku</string>
   <string name="history_items_deleted">%d məǧolon molə byən ce dijə karde tarixiku</string>
   <string name="history_item_delete_undo">Ohaštej</string>
@@ -41,7 +42,7 @@
   <string name="wikimedia_commons">Wikimedia Commons</string>
   <string name="wikidata">Vikiməlumot</string>
   <string name="dialog_title_clear_history">Dijə karde tarixi mole</string>
-  <string name="dialog_message_clear_history">Dijə kardə səhifon tarix həmmə molə byəben ijən həmmə ožə vərəǧon dəbastə byben. Idomə karde?</string>
+  <string name="dialog_message_clear_history" fuzzy="true">Dijə kardə səhifon tarix həmmə molə byəben ijən həmmə ožə vərəǧon dəbastə byben. Idomə karde?</string>
   <string name="dialog_message_clear_history_yes">Bəle</string>
   <string name="dialog_message_clear_history_no">Ne</string>
   <string name="share_via">Pevylo karde</string>
@@ -54,7 +55,7 @@
   <string name="page_edit_history_filter_by">Cešidin karde de</string>
   <string name="page_edit_history_filter_by_all">Həmmə ovaxtətijon (%s)</string>
   <string name="page_edit_history_filter_by_user">Ce ištirokəkon ovaxtətijon (%s)</string>
-  <string name="page_edit_history_filter_by_anon">Noməlumə ovaxtə cijon (%s)</string>
+  <string name="page_edit_history_filter_by_anon" fuzzy="true">Noməlumə ovaxtə cijon (%s)</string>
   <string name="page_edit_history_filter_by_bot">Boton ovaxtə cijon (%s)</string>
   <string name="page_edit_history_metrics_content_description">Pamjəjon ce %1$s tosə %2$s</string>
   <plurals name="page_edit_history_article_edits_since_year">
@@ -137,7 +138,7 @@
   <string name="login_username_hint">Ištirokəkə nom</string>
   <string name="login_password_hint">Parol</string>
   <string name="account_creation_password_hint">Parol</string>
-  <string name="login_2fa_hint">Dy-faktorinə autentifikasijə kod</string>
+  <string name="login_2fa_hint" fuzzy="true">Dy-faktorinə autentifikasijə kod</string>
   <string name="onboarding_card_login">Dəše</string>
   <string name="page_editing_login">Dəše</string>
   <string name="reading_lists_sync_login">Dəše</string>
@@ -207,14 +208,10 @@
   <string name="privacy_policy_description">Məxfiyəti siyosət</string>
   <string name="terms_of_use_description">Oko doj šərton</string>
   <string name="about_wikipedia_url">https://ru.wikipedia.org/wiki/Vikipedia:Nom-nyšon</string>
-  <string name="offline_reading_and_data_url">https://www.mediawiki.org/wiki/Wikimedia_Apps/Android_FAQ#Offline_reading_and_data</string>
-  <string name="android_app_faq_url">https://www.mediawiki.org/wiki/Wikimedia_Apps/Android_FAQ</string>
-  <string name="android_app_request_an_account_url">https://en.wikipedia.org/wiki/Wikipedia:Request_an_account</string>
-  <string name="android_app_edit_help_url">https://m.mediawiki.org/wiki/Wikimedia_Apps/Suggested_edits</string>
-  <string name="suggested_edits_image_tags_help_url">https://www.mediawiki.org/wiki/Wikimedia_Apps/Suggested_edits#Image_tags</string>
+  <string name="offline_reading_and_data_url" fuzzy="true">https://www.mediawiki.org/wiki/Wikimedia_Apps/Android_FAQ#Offline_reading_and_data</string>
   <string name="about_libraries_heading">Oko doə byə kitobxonon</string>
   <string name="about_contributors_heading">Myəllifon</string>
-  <string name="about_contributors">&lt;a href=\"https://www.mediawiki.org/wiki/Wikimedia_Apps/Team/Android\"&gt;Dastə səhifə&lt;/a&gt;</string>
+  <string name="about_contributors">&lt;a href=\"https://www.mediawiki.org/wiki/Special:MyLanguage/Wikimedia_Apps/Team/Android\"&gt;Dastə səhifə&lt;/a&gt;</string>
   <string name="about_translators_heading">Pegordynon</string>
   <string name="about_app_license_heading">Lisensijə</string>
   <string name="about_activity_title">Čynəvə barədə</string>
@@ -329,7 +326,10 @@
   <string name="enable_location_service">Pekardej</string>
   <string name="location_permissions_enable_prompt">Hašte mandəvyrə umute bo yšty nezonədə vyron vinde.</string>
   <string name="location_permissions_enable_action">Pekardej</string>
-  <string name="multi_items_selected">{{PLURAL\n|one=%d vyžnijə byə|%d vyžnijə byə}}</string>
+  <plurals name="multi_items_selected">
+    <item quantity="one">%d vyžnijə byə</item>
+    <item quantity="other">%d vyžnijə byə</item>
+  </plurals>
   <string name="multi_select_items_selected">%d vyžnijə byə</string>
   <string name="error_message_generic">Xəto beše</string>
   <string name="view_link_preview_error_button_dismiss">Žəj</string>
@@ -366,7 +366,7 @@
   <string name="article_menu_bar_contents_button">Myndəričot</string>
   <string name="article_header_edit_hint">Sərost kardej...</string>
   <string name="article_header_edit_description">Səhifə nom-nyšoni ovaxte</string>
-  <string name="article_header_edit_lead_section">Vəsə sərost kardej</string>
+  <string name="article_header_edit_lead_section">Sərlovhə sərost kardej</string>
   <string name="color_theme_select">Myžor</string>
   <string name="color_theme_light">Rušin</string>
   <string name="color_theme_dark">Gyrd tojki</string>
@@ -432,8 +432,8 @@
     <item quantity="other">%d gylə məǧolon ce sijohiku molə byə</item>
   </plurals>
   <plurals name="reading_list_articles_deleted_from_list">
-    <item quantity="one">%d gylə məǧolə molə byə cyjo %s</item>
-    <item quantity="other">%d gylə məǧolə molə byə cyjo %s</item>
+    <item quantity="one">%1$d gylə məǧolə molə byə cyjo %2$s</item>
+    <item quantity="other">%1$d gylə məǧolə molə byə cyjo %2$s</item>
   </plurals>
   <plurals name="reading_lists_deleted_message">
     <item quantity="one">%d gylə sijohi molə byə</item>
@@ -447,7 +447,7 @@
   <string name="reading_lists_item_deleted">%s ce sijohijonku molə byə</string>
   <string name="reading_list_item_delete_undo">Ohaštej</string>
   <string name="reading_list_deleted">%s molə byə</string>
-  <string name="saved_list_empty_title">Hələ ki bo hande sijohijon nin</string>
+  <string name="saved_list_empty_title" fuzzy="true">Hələ ki bo hande sijohijon nin</string>
   <string name="reading_lists_empty_message">Bə sijohi məǧolon əlovə kykardən bo pešo əvoni handejro, hətto girəm šymə oflajnədəjon.</string>
   <string name="reading_list_empty">By sijohijədə əlovə kardə byə məǧolon nin.</string>
   <string name="reading_list_article_offline">Be interneti dastrəse</string>
@@ -490,7 +490,6 @@
   <string name="reading_lists_menu_create_list">Nujə sijohi soxte</string>
   <string name="reading_lists_menu_sort_by">Cešidin karde de</string>
   <string name="reading_lists_refresh_sync_option">Sinxronizasijə nujə karde</string>
-  <string name="reading_list_preference_login_or_signup_to_enable_sync_dialog_login">Dəše / Ǧejd be</string>
   <string name="reading_list_toast_last_sync">Bo hande sijohijon sinxron kardə byən</string>
   <string name="reading_list_remove_list_dialog_ok_button_text">COK</string>
   <string name="reading_list_delete_dialog_ok_button_text">COK</string>
@@ -611,7 +610,7 @@
   <string name="menu_feed_card_edit_card_languages">Zyvonon kərti sərost karde</string>
   <string name="menu_feed_overflow_label">Hənijən səbəro</string>
   <string name="feed_featured_image_share_subject">Ce Vikimənbə ən cokə šikilon</string>
-  <string name="home">Vəsə</string>
+  <string name="home">Sərlovhə</string>
   <string name="view_static_card_icon_content_description">Kərti nyšonə</string>
   <string name="view_card_news_title">Xəbonədə</string>
   <string name="view_continue_reading_card_subtitle_today">ımruj</string>
@@ -630,7 +629,7 @@
   <string name="feed_item_type_featured_image">Ce Vikimənbəku ruži vyžnijə byə šikil</string>
   <string name="feed_item_type_randomizer">Bo hande məǧolon rajrəstə sijohi soxte</string>
   <string name="feed_item_type_suggested_edits">Bo kyrtə nom-nyšonon sərost karde tovsijə kardə byə</string>
-  <string name="feed_empty_message">Šymə lent təjlije</string>
+  <string name="feed_empty_message" fuzzy="true">Šymə lent təjlije</string>
   <string name="feed_configure_onboarding_action">Cəmisə noj</string>
   <string name="customize_lang_selection_dialog_ok_button_text">COK</string>
   <string name="customize_lang_selection_dialog_cancel_button_text">Ohaštej</string>
@@ -730,7 +729,6 @@
   <string name="suggested_edits_contribution_type_label">Tohfə tispir</string>
   <string name="suggested_edits_contribution_image_label">Šikil</string>
   <string name="suggested_edits_contribution_article_label">Məǧolon</string>
-  <string name="suggested_edits_contribution_type_title">%1$d %2$s</string>
   <string name="suggested_edits_contribution_date_yesterday_text">Zinə</string>
   <string name="suggested_edits_contribution_type_image_tag">Šikili teg</string>
   <string name="suggested_edits_descriptions_not_enough_info_suggestion">Məlumot kame</string>
@@ -740,7 +738,7 @@
   <string name="image_recommendation_accept">Bəle</string>
   <string name="image_recommendation_reject">Ne</string>
   <string name="image_recommendation_notsure">Cətine vote</string>
-  <string name="image_recommendation_reject_title">Buci ne?</string>
+  <string name="image_recommendation_reject_title" fuzzy="true">Buci ne?</string>
   <string name="image_recommendation_reject_other">Čo</string>
   <string name="image_recommendation_reject_submit">Vyǧandej</string>
   <string name="image_recommendation_tooltip_next">Dumotono šə</string>
@@ -777,9 +775,6 @@
   <string name="wikipedia_languages_remove_warning_dialog_title">Həmmə zyvonon mole əbyni</string>
   <string name="more_language_options">hənijən zyvonon</string>
   <string name="add_wikipedia_languages_text">Ce Vikipedia zyvonon əlovə kardej</string>
-  <string name="dialog_of_remove_chinese_variants_from_app_lang_title">Cini zyvon ce zyvonon sijohiku mole?</string>
-  <string name="dialog_of_remove_chinese_variants_from_app_lang_edit">Zyvonon sərost kardej</string>
-  <string name="dialog_of_remove_chinese_variants_from_app_lang_no">Ne, səǧbi</string>
   <string name="remove_language_dialog_cancel_button_text">Ohaštej</string>
   <string name="remove_language_dialog_ok_button_text">COK</string>
   <string name="remove_all_language_warning_dialog_ok_button_text">COK</string>
@@ -848,7 +843,6 @@
   <string name="talk_warn_save_dialog_title">Ovaxtətijon ogəte?</string>
   <string name="talk_warn_save_dialog_publish">Edaštej</string>
   <string name="talk_warn_save_dialog_cancel">Ohaštej</string>
-  <string name="talk_warn_saved_message_dropdown">Ogətə byə ǧədəǧon</string>
   <string name="talk_page_empty_title">No-pegət ijo bino bejdə</string>
   <string name="talk_add_reply">Čəvob doj</string>
   <string name="talk_no_subject">(Be myžori)</string>
@@ -904,10 +898,10 @@
   <string name="revision_compare_two_only">Bəbe javli dy gylə versijə vyžnije.</string>
   <string name="watchlist_page_add_to_watchlist_snackbar_action">Ovaxtej</string>
   <string name="watchlist_page_add_to_watchlist_snackbar_period_permanently">hežo</string>
-  <string name="watchlist_page_add_to_watchlist_snackbar_period_for_one_week">bə 1 həftə</string>
-  <string name="watchlist_page_add_to_watchlist_snackbar_period_for_one_month">bə 1 mang</string>
-  <string name="watchlist_page_add_to_watchlist_snackbar_period_for_three_months">bə 3 mang</string>
-  <string name="watchlist_page_add_to_watchlist_snackbar_period_for_six_months">bə 6 mang</string>
+  <string name="watchlist_page_add_to_watchlist_snackbar_period_for_one_week" fuzzy="true">bə 1 həftə</string>
+  <string name="watchlist_page_add_to_watchlist_snackbar_period_for_one_month" fuzzy="true">bə 1 mang</string>
+  <string name="watchlist_page_add_to_watchlist_snackbar_period_for_three_months" fuzzy="true">bə 3 mang</string>
+  <string name="watchlist_page_add_to_watchlist_snackbar_period_for_six_months" fuzzy="true">bə 6 mang</string>
   <string name="watchlist_expiry_dialog_permanent">Hežo</string>
   <string name="watchlist_expiry_dialog_one_week">1 həftə</string>
   <string name="watchlist_expiry_dialog_one_month">1 mang</string>
@@ -988,7 +982,6 @@
   <string name="talk_templates_edit_message_dialog_title">Ǧədəǧə sərost kardej</string>
   <string name="talk_templates_edit_message_dialog_save">Ogətej</string>
   <string name="talk_templates_edit_message_dialog_delete">Mole</string>
-  <string name="patroller_tasks_edits_list_title">Ovaxtətijon sijohi</string>
   <string name="patroller_tasks_edits_list_card_tags_text">Tegon: %s</string>
   <string name="patroller_tasks_edits_list_card_overflow_view_user_contributions">Ištirokəkə tohfə dijəkə</string>
   <string name="patroller_tasks_edits_list_card_overflow_thank">Sepas</string>
@@ -1013,7 +1006,6 @@
   <string name="patroller_tasks_overflow_learn">Ve omute</string>
   <string name="patroller_onboarding_two_thank_title">Sepas</string>
   <string name="patroller_onboarding_two_watch_title">Rymuz kardej</string>
-  <string name="patroller_onboarding_two_warn_title">Cocašin</string>
   <string name="data_opt_in_accept">Ǧəbul kardej</string>
   <string name="data_opt_in_reject">Ohaštej</string>
   <string name="page_issues_title">Səhifə problemon</string>
@@ -1021,4 +1013,6 @@
   <string name="places_title">Vyron</string>
   <string name="places_toggle_buttons_map">Xəritə</string>
   <string name="places_toggle_buttons_list">Sijohi</string>
+  <string name="year_in_review_reading_list_dialog_positive_button_label">Soxtej</string>
+  <string name="year_in_review_reading_list_dialog_negative_button_label">Ne, səǧbi</string>
 </resources>

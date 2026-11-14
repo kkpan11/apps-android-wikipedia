@@ -10,22 +10,24 @@ object Constants {
     const val ACTIVITY_REQUEST_DESCRIPTION_EDIT = 55
     const val ACTIVITY_REQUEST_FEED_CONFIGURE = 58
     const val ACTIVITY_REQUEST_GALLERY = 52
-    const val ACTIVITY_REQUEST_IMAGE_TAGS_ONBOARDING = 65
-    const val ACTIVITY_REQUEST_LANGLINKS = 50
-    const val ACTIVITY_REQUEST_LOGIN = 53
     const val ACTIVITY_REQUEST_OPEN_SEARCH_ACTIVITY = 62
     const val ACTIVITY_REQUEST_SETTINGS = 41
     const val ACTIVITY_REQUEST_VOICE_SEARCH = 45
 
     const val ARG_TITLE = "title"
     const val ARG_WIKISITE = "wikiSite"
+    const val ARG_TEXT = "text"
+    const val ARG_BOOLEAN = "boolean"
+    const val ARG_NUMBER = "number"
     const val INTENT_APP_SHORTCUT_CONTINUE_READING = "appShortcutContinueReading"
     const val INTENT_APP_SHORTCUT_RANDOMIZER = "appShortcutRandomizer"
     const val INTENT_APP_SHORTCUT_SEARCH = "appShortcutSearch"
+    const val INTENT_APP_SHORTCUT_PLACES = "appShortcutPlaces"
     const val INTENT_EXTRA_ACTION = "intentAction"
     const val INTENT_EXTRA_DELETE_READING_LIST = "deleteReadingList"
     const val INTENT_EXTRA_GO_TO_MAIN_TAB = "goToMainTab"
     const val INTENT_EXTRA_GO_TO_SE_TAB = "goToSETab"
+    const val INTENT_EXTRA_SCROLL_TO_GAMES = "scrollToGames"
     const val INTENT_EXTRA_HAS_TRANSITION_ANIM = "hasTransitionAnim"
     const val INTENT_EXTRA_INVOKE_SOURCE = "invokeSource"
     const val INTENT_EXTRA_PREVIEW_SAVED_READING_LISTS = "previewSavedReadingList"
@@ -33,15 +35,18 @@ object Constants {
     const val INTENT_EXTRA_NOTIFICATION_SYNC_CANCEL = "syncCancel"
     const val INTENT_EXTRA_NOTIFICATION_SYNC_PAUSE_RESUME = "syncPauseResume"
     const val INTENT_EXTRA_NOTIFICATION_TYPE = "notificationType"
+    const val INTENT_EXTRA_NOTIFICATION_CATEGORY = "notificationCategory"
     const val INTENT_EXTRA_REVERT_QNUMBER = "revertQNumber"
+    const val INTENT_EXTRA_SNACKBAR_MESSAGE = "snackbarMessage"
     const val INTENT_RETURN_TO_MAIN = "returnToMain"
+    const val INTENT_WIDGET_TYPE = "widgetType"
 
     const val MAX_READING_LIST_ARTICLE_LIMIT = 5000
     const val MAX_READING_LISTS_LIMIT = 100
     const val MAX_TABS = 100
     const val MIN_LANGUAGES_TO_UNLOCK_TRANSLATION = 2
     const val PLAIN_TEXT_MIME_TYPE = "text/plain"
-    const val PREFERRED_CARD_THUMBNAIL_SIZE = 800
+    const val PREFERRED_CARD_THUMBNAIL_SIZE = 960
     const val PREFERRED_GALLERY_IMAGE_SIZE = 1280
     const val SUGGESTION_REQUEST_ITEMS = 5
 
@@ -50,11 +55,10 @@ object Constants {
     const val WIKI_CODE_WIKIDATA = "wikidata"
     const val WIKIDATA_DB_NAME = "wikidatawiki"
 
-    val NON_LANGUAGE_SUBDOMAINS = listOf("donate", "thankyou", "quote", "textbook", "sources", "species", "commons", "meta")
+    val NON_LANGUAGE_SUBDOMAINS = listOf("donate", "thankyou", "quote", "textbook", "sources", "species", "commons", "meta", "abstract")
 
     val commonsWikiSite = WikiSite(Service.COMMONS_URL)
     val wikidataWikiSite = WikiSite(Service.WIKIDATA_URL)
-
     enum class InvokeSource(val value: String) {
         ANNOUNCEMENT("announcement"),
         APP_SHORTCUTS("appShortcuts"),
@@ -69,7 +73,6 @@ object Constants {
         INTENT_PROCESS_TEXT("intentProcessText"),
         INTENT_SHARE("intentShare"),
         INTENT_UNKNOWN("intentUnknown"),
-        LANG_VARIANT_DIALOG("lang_variant_dialog"),
         LEAD_IMAGE("leadImage"),
         LINK_PREVIEW_MENU("linkPreviewMenu"),
         MOST_READ_ACTIVITY("mostRead"),
@@ -98,7 +101,6 @@ object Constants {
         TALK_TOPICS_ACTIVITY("talkTopicsActivity"),
         TALK_TOPIC_ACTIVITY("talkTopicActivity"),
         TALK_REPLY_ACTIVITY("talkReplyActivity"),
-        ADD_TEMPLATE_ACTIVITY("addTemplateActivity"),
         EDIT_ACTIVITY("editActivity"),
         TOOLBAR("toolbar"),
         VOICE("voice"),
@@ -108,6 +110,12 @@ object Constants {
         USER_CONTRIB_ACTIVITY("userContribActivity"),
         EDIT_ADD_IMAGE("editAddImage"),
         SUGGESTED_EDITS_RECENT_EDITS("suggestedEditsRecentEdits"),
+        ON_THIS_DAY_GAME_ACTIVITY("onThisDayGame"),
+        ACTIVITY_TAB("activityTab"),
+        GAMES_HUB("gamesHub"),
+        FEED_INTEREST_SELECTION("feedInterestSelection"),
+        DID_YOU_KNOW("didYouKnow"),
+        YEAR_IN_REVIEW("yearInReview")
     }
 
     enum class ImageEditType(name: String) {

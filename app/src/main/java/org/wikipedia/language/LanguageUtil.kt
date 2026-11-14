@@ -1,21 +1,18 @@
 package org.wikipedia.language
 
 import android.content.Context
-import android.os.Build
 import android.view.inputmethod.InputMethodManager
 import androidx.core.os.LocaleListCompat
 import org.apache.commons.lang3.StringUtils
 import org.wikipedia.WikipediaApp
 import org.wikipedia.util.StringUtil
-import java.util.*
+import java.util.Locale
 
 object LanguageUtil {
 
-    private const val HONG_KONG_COUNTRY_CODE = "HK"
-    private const val MACAU_COUNTRY_CODE = "MO"
-    private val TRADITIONAL_CHINESE_COUNTRY_CODES = listOf(Locale.TAIWAN.country, HONG_KONG_COUNTRY_CODE, MACAU_COUNTRY_CODE)
+    private const val MAX_SUGGESTED_LANGUAGES = 8
 
-    val availableLanguages: List<String>
+    val suggestedLanguagesFromSystem: List<String>
         get() {
             val languages = mutableListOf<String>()
 
@@ -36,15 +33,13 @@ object LanguageUtil {
 
             // Query the installed keyboard languages, and add them to the list, if they don't exist.
             val imm = WikipediaApp.instance.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
-            val ims = imm.enabledInputMethodList ?: emptyList()
+            val ims = imm.enabledInputMethodList
             val langTagList = mutableListOf<String>()
             for (method in ims) {
                 val submethods = imm.getEnabledInputMethodSubtypeList(method, true) ?: emptyList()
                 for (submethod in submethods) {
                     if (submethod.mode == "keyboard") {
-                        var langTag =
-                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N && submethod.languageTag.isNotEmpty()) submethod.languageTag
-                            else submethod.locale
+                        var langTag = submethod.languageTag.ifEmpty { submethod.locale }
                         if (langTag.isEmpty()) {
                             continue
                         }
@@ -76,10 +71,9 @@ object LanguageUtil {
                     }
                 }
             }
-            return languages
+            return languages.take(MAX_SUGGESTED_LANGUAGES)
         }
 
-    @JvmStatic
     fun localeToWikiLanguageCode(locale: Locale): String {
         // Convert deprecated language codes to modern ones.
         // See https://developer.android.com/reference/java/util/Locale.html
@@ -88,40 +82,15 @@ object LanguageUtil {
             "in" -> "id" // Indonesian
             "ji" -> "yi" // Yiddish
             "yue" -> AppLanguageLookUpTable.CHINESE_YUE_LANGUAGE_CODE
-            "zh" -> chineseLanguageCodeToWikiLanguageCode(locale)
+            "zh" -> AppLanguageLookUpTable.chineseLocaleToWikiLanguageCode(locale)
             else -> locale.language
         }
     }
 
-    private fun chineseLanguageCodeToWikiLanguageCode(locale: Locale): String {
-        when (locale.script) {
-            "Hans" -> return AppLanguageLookUpTable.SIMPLIFIED_CHINESE_LANGUAGE_CODE
-            "Hant" -> return AppLanguageLookUpTable.TRADITIONAL_CHINESE_LANGUAGE_CODE
-        }
-
-        // Guess based on country. If the guess is incorrect, the user must explicitly choose the
-        // dialect in the app settings.
-        return if (isTraditionalChinesePredominantInCountry(locale.country)) AppLanguageLookUpTable.TRADITIONAL_CHINESE_LANGUAGE_CODE
-        else AppLanguageLookUpTable.SIMPLIFIED_CHINESE_LANGUAGE_CODE
-    }
-
-    private fun isTraditionalChinesePredominantInCountry(country: String?): Boolean {
-        return TRADITIONAL_CHINESE_COUNTRY_CODES.contains(country)
-    }
-
-    val firstSelectedChineseVariant: String
-        get() {
-            val firstSelectedChineseLangCode =
-                WikipediaApp.instance.languageState.appLanguageCodes.firstOrNull {
-                    isChineseVariant(it)
-                }
-            return firstSelectedChineseLangCode.orEmpty()
-                .ifEmpty { AppLanguageLookUpTable.TRADITIONAL_CHINESE_LANGUAGE_CODE }
-        }
-
-    fun isChineseVariant(langCode: String): Boolean {
-        return langCode.startsWith(AppLanguageLookUpTable.CHINESE_LANGUAGE_CODE) &&
-                langCode != AppLanguageLookUpTable.CHINESE_YUE_LANGUAGE_CODE
+    fun wikiLanguageCodeToLocale(languageCode: String): Locale {
+        return Locale
+            .forLanguageTag(WikipediaApp.instance.languageState.getBcp47LanguageCode(languageCode))
+            .takeIf { it.language.isNotEmpty() } ?: Locale.getDefault()
     }
 
     fun startsWithArticle(text: String, language: String): Boolean {
@@ -138,10 +107,16 @@ object LanguageUtil {
     }
 
     fun convertToUselangIfNeeded(languageCode: String): String {
-        return if (languageCode == "test") "uselang" else languageCode
+        return if (languageCode.startsWith(AppLanguageLookUpTable.TEST_LANGUAGE_CODE)) "uselang" else languageCode
     }
 
     fun formatLangCodeForButton(languageCode: String): String {
         return languageCode.replace("-", "-\n")
+    }
+
+    fun getSupportedLanguageCodes(list: List<String>): List<String> {
+        return list.flatMap { langCode ->
+            WikipediaApp.instance.languageState.getLanguageVariants(langCode) ?: listOf(langCode)
+        }
     }
 }

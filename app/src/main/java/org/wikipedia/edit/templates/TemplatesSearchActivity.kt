@@ -7,6 +7,7 @@ import android.graphics.Typeface
 import android.os.Bundle
 import android.view.View
 import android.view.ViewGroup
+import androidx.activity.OnBackPressedCallback
 import androidx.activity.viewModels
 import androidx.appcompat.widget.SearchView
 import androidx.core.view.isVisible
@@ -14,7 +15,6 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.paging.LoadState
-import androidx.paging.PagingDataAdapter
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -23,6 +23,8 @@ import kotlinx.coroutines.launch
 import org.wikipedia.Constants
 import org.wikipedia.R
 import org.wikipedia.activity.BaseActivity
+import org.wikipedia.adapter.PagingDataAdapterPatched
+import org.wikipedia.analytics.eventplatform.PatrollerExperienceEvent
 import org.wikipedia.databinding.ActivityTemplatesSearchBinding
 import org.wikipedia.databinding.ItemTemplatesSearchBinding
 import org.wikipedia.dataclient.WikiSite
@@ -41,11 +43,10 @@ class TemplatesSearchActivity : BaseActivity() {
 
     private var templatesSearchAdapter: TemplatesSearchAdapter? = null
 
-    val viewModel: TemplatesSearchViewModel by viewModels { TemplatesSearchViewModel.Factory(intent.extras!!) }
+    val viewModel: TemplatesSearchViewModel by viewModels()
 
-    private val searchCloseListener = SearchView.OnCloseListener {
+    private val searchCloseListener = View.OnClickListener {
         closeSearch()
-        false
     }
 
     private val searchQueryListener = object : SearchView.OnQueryTextListener {
@@ -66,8 +67,10 @@ class TemplatesSearchActivity : BaseActivity() {
         binding = ActivityTemplatesSearchBinding.inflate(layoutInflater)
         setContentView(binding.root)
         setSupportActionBar(binding.toolbar)
-
+        sendPatrollerExperienceEvent("search_init", "pt_templates")
         initSearchView()
+
+        onBackPressedDispatcher.addCallback(this, onBackPressedCallback)
 
         templatesSearchAdapter = TemplatesSearchAdapter()
         binding.templateRecyclerView.layoutManager = LinearLayoutManager(this)
@@ -77,6 +80,7 @@ class TemplatesSearchActivity : BaseActivity() {
 
         binding.insertTemplateButton.setOnClickListener {
             viewModel.selectedPageTitle?.let {
+                sendPatrollerExperienceEvent("template_insert_click", "pt_templates")
                 Prefs.addRecentUsedTemplates(setOf(it))
                 val wikiText = insertTemplateFragment.collectParamsInfoAndBuildWikiText()
                 val intent = Intent().putExtra(RESULT_WIKI_TEXT, wikiText)
@@ -89,7 +93,7 @@ class TemplatesSearchActivity : BaseActivity() {
             repeatOnLifecycle(Lifecycle.State.CREATED) {
                 launch {
                     viewModel.searchTemplatesFlow.collectLatest {
-                        templatesSearchAdapter?.submitData(it)
+                        templatesSearchAdapter?.submitData(lifecycleScope, it)
                     }
                 }
                 launch {
@@ -117,7 +121,7 @@ class TemplatesSearchActivity : BaseActivity() {
 
     private fun initSearchView() {
         binding.searchCabView.setOnQueryTextListener(searchQueryListener)
-        binding.searchCabView.setOnCloseListener(searchCloseListener)
+        binding.searchCabView.setCloseButtonClickListener(searchCloseListener)
         binding.searchCabView.setSearchHintTextColor(ResourceUtil.getThemedColor(this, R.attr.secondary_color))
         binding.searchCabView.queryHint = getString(R.string.templates_search_hint)
         val searchEditPlate = binding.searchCabView.findViewById<View>(androidx.appcompat.R.id.search_plate)
@@ -130,6 +134,7 @@ class TemplatesSearchActivity : BaseActivity() {
     }
 
     private fun closeSearch() {
+        binding.searchCabView.setQuery("", false)
         DeviceUtil.hideSoftKeyboard(this)
     }
 
@@ -149,19 +154,27 @@ class TemplatesSearchActivity : BaseActivity() {
         binding.toolbarContainer.elevation = if (enabled) DimenUtil.dpToPx(1f) else 0f
     }
 
-    override fun onBackPressed() {
-        if (insertTemplateFragment.handleBackPressed()) {
-            if (templatesSearchAdapter != null) {
-                binding.searchCabView.isVisible = true
-                binding.insertTemplateButton.isVisible = false
-                supportActionBar?.title = null
-                updateToolbarElevation(true)
-            } else {
-                finish()
-            }
-            return
+    fun sendPatrollerExperienceEvent(action: String, activeInterface: String, actionData: String = "") {
+        if (viewModel.isFromDiff) {
+            PatrollerExperienceEvent.logAction(action, activeInterface, actionData)
         }
-        super.onBackPressed()
+    }
+
+    private val onBackPressedCallback = object : OnBackPressedCallback(true) {
+        override fun handleOnBackPressed() {
+            if (insertTemplateFragment.handleBackPressed()) {
+                if (templatesSearchAdapter != null) {
+                    binding.searchCabView.isVisible = true
+                    binding.insertTemplateButton.isVisible = false
+                    supportActionBar?.title = null
+                    updateToolbarElevation(true)
+                } else {
+                    finish()
+                }
+                return
+            }
+            finish()
+        }
     }
 
     private inner class TemplatesSearchDiffCallback : DiffUtil.ItemCallback<PageTitle>() {
@@ -174,7 +187,7 @@ class TemplatesSearchActivity : BaseActivity() {
         }
     }
 
-    private inner class TemplatesSearchAdapter : PagingDataAdapter<PageTitle, RecyclerView.ViewHolder>(TemplatesSearchDiffCallback()) {
+    private inner class TemplatesSearchAdapter : PagingDataAdapterPatched<PageTitle, RecyclerView.ViewHolder>(TemplatesSearchDiffCallback()) {
         override fun onCreateViewHolder(parent: ViewGroup, pos: Int): TemplatesSearchItemHolder {
             return TemplatesSearchItemHolder(ItemTemplatesSearchBinding.inflate(layoutInflater, parent, false))
         }
@@ -207,11 +220,13 @@ class TemplatesSearchActivity : BaseActivity() {
     }
 
     companion object {
+        const val EXTRA_FROM_DIFF = "isFromDiff"
         const val RESULT_INSERT_TEMPLATE_SUCCESS = 100
         const val RESULT_WIKI_TEXT = "resultWikiText"
-        fun newIntent(context: Context, wikiSite: WikiSite, invokeSource: Constants.InvokeSource): Intent {
+        fun newIntent(context: Context, wikiSite: WikiSite, isFromDiff: Boolean, invokeSource: Constants.InvokeSource): Intent {
             return Intent(context, TemplatesSearchActivity::class.java)
                 .putExtra(Constants.ARG_WIKISITE, wikiSite)
+                .putExtra(EXTRA_FROM_DIFF, isFromDiff)
                 .putExtra(Constants.INTENT_EXTRA_INVOKE_SOURCE, invokeSource)
         }
     }

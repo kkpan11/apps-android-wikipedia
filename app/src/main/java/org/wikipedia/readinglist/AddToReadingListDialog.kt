@@ -27,7 +27,6 @@ import org.wikipedia.page.PageTitle
 import org.wikipedia.readinglist.ReadingListTitleDialog.readingListTitleDialog
 import org.wikipedia.readinglist.database.ReadingList
 import org.wikipedia.settings.Prefs
-import org.wikipedia.settings.SiteInfoClient
 import org.wikipedia.util.DimenUtil.getDimension
 import org.wikipedia.util.DimenUtil.roundedDpToPx
 import org.wikipedia.util.FeedbackUtil.makeSnackbar
@@ -91,7 +90,7 @@ open class AddToReadingListDialog : ExtendedBottomSheetDialogFragment() {
             displayedLists.clear()
             displayedLists.addAll(readingLists)
             if (!showDefaultList && displayedLists.isNotEmpty()) {
-                displayedLists.removeAt(0)
+                displayedLists.removeIf { it.isDefault }
             }
             ReadingList.sort(displayedLists, Prefs.getReadingListSortMode(ReadingList.SORT_BY_NAME_ASC))
             adapter.notifyDataSetChanged()
@@ -116,15 +115,18 @@ open class AddToReadingListDialog : ExtendedBottomSheetDialogFragment() {
     private fun showCreateListDialog() {
         readingListTitleDialog(requireActivity(), "", "", readingLists.map { it.title }, callback = object : ReadingListTitleDialog.Callback {
             override fun onSuccess(text: String, description: String) {
-                addAndDismiss(AppDatabase.instance.readingListDao().createList(text, description), titles)
+                lifecycleScope.launch(CoroutineExceptionHandler { _, throwable ->
+                    L.e(throwable)
+                }) {
+                    addAndDismiss(AppDatabase.instance.readingListDao().createList(text, description), titles)
+                }
             }
-            override fun onCancel() { }
         }).show()
     }
 
     private fun addAndDismiss(readingList: ReadingList, titles: List<PageTitle>?) {
-        if (readingList.pages.size + titles!!.size > SiteInfoClient.maxPagesPerReadingList) {
-            val message = getString(R.string.reading_list_article_limit_message, readingList.title, SiteInfoClient.maxPagesPerReadingList)
+        if (readingList.pages.size + titles!!.size > Constants.MAX_READING_LIST_ARTICLE_LIMIT) {
+            val message = getString(R.string.reading_list_article_limit_message, readingList.title, Constants.MAX_READING_LIST_ARTICLE_LIMIT)
             makeSnackbar(requireActivity(), message).show()
             dismiss()
             return
@@ -158,17 +160,9 @@ open class AddToReadingListDialog : ExtendedBottomSheetDialogFragment() {
         override fun onClick(readingList: ReadingList) {
             addAndDismiss(readingList, titles)
         }
-
-        override fun onRename(readingList: ReadingList) {}
-        override fun onDelete(readingList: ReadingList) {}
-        override fun onSaveAllOffline(readingList: ReadingList) {}
-        override fun onRemoveAllOffline(readingList: ReadingList) {}
-        override fun onSelectList(readingList: ReadingList) {}
-        override fun onChecked(readingList: ReadingList) {}
-        override fun onShare(readingList: ReadingList) {}
     }
 
-    private class ReadingListItemHolder constructor(itemView: ReadingListItemView) : RecyclerView.ViewHolder(itemView) {
+    private class ReadingListItemHolder(itemView: ReadingListItemView) : RecyclerView.ViewHolder(itemView) {
         fun bindItem(readingList: ReadingList) {
             (itemView as ReadingListItemView).setReadingList(readingList, ReadingListItemView.Description.SUMMARY)
         }

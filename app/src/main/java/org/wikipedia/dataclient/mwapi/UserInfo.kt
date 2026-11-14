@@ -2,9 +2,14 @@ package org.wikipedia.dataclient.mwapi
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.jsonPrimitive
 import org.wikipedia.dataclient.mwapi.MwServiceError.BlockInfo
+import org.wikipedia.donate.DonorCode
+import org.wikipedia.json.JsonUtil
 import org.wikipedia.util.DateUtil
-import java.util.*
+import java.util.Date
 
 @Serializable
 class UserInfo : BlockInfo() {
@@ -13,7 +18,7 @@ class UserInfo : BlockInfo() {
     @SerialName("latestcontrib") private val latestContrib: String? = null
     @SerialName("registrationdate") private val regDate: String? = null
     @SerialName("registration") private val registration: String? = null
-    @SerialName("editcount") val editCount = -1
+    @SerialName("editcount") val editCount = 0
     val name: String = ""
     val anon: Boolean = false
     val messages: Boolean = false
@@ -22,7 +27,7 @@ class UserInfo : BlockInfo() {
     @SerialName("cancreateerror") private val canCreateError: List<MwServiceError>? = null
     val options: Options? = null
 
-    val error get() = canCreateError?.get(0)?.title.orEmpty()
+    val error get() = canCreateError?.get(0)?.key.orEmpty()
     val hasBlockError get() = error.contains("block")
 
     fun groups(): Set<String> {
@@ -51,6 +56,24 @@ class UserInfo : BlockInfo() {
 
     @Serializable
     class Options {
-        @SerialName("watchdefault") val watchDefault: Int = 0
+        @SerialName("watchdefault") private val watchDefault: JsonElement? = null
+        @SerialName("centralnotice-display-campaign-type-fundraising") private val fundraisingOptIn: JsonElement? = null
+        @SerialName("wikimedia-donor") private val wikimediaDonor: JsonElement? = null
+
+        val watchEditedPagesByDefault get() = isExplicitOne(watchDefault)
+        val optedInToFundraising get() = isExplicitOne(fundraisingOptIn)
+        val wikimediaDonorPref: WikimediaDonorStatus?
+            get() = JsonUtil.decodeFromString<WikimediaDonorStatus>(wikimediaDonor?.jsonPrimitive?.contentOrNull)
+        val wikimediaDonorCode: DonorCode?
+            get() = wikimediaDonorPref?.value
+
+        private fun isExplicitOne(element: JsonElement?) = element?.toString().orEmpty().replace("\"", "") == "1"
+
+        @Serializable
+        class WikimediaDonorStatus(
+            val value: DonorCode? = null,
+            val timestamp: Long? = null,
+            val source: String? = null
+        )
     }
 }

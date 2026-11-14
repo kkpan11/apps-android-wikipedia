@@ -1,15 +1,14 @@
 package org.wikipedia.csrf
 
-import io.reactivex.rxjava3.core.Observable
-import io.reactivex.rxjava3.schedulers.Schedulers
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import org.wikipedia.WikipediaApp
 import org.wikipedia.auth.AccountUtil
 import org.wikipedia.dataclient.Service
 import org.wikipedia.dataclient.ServiceFactory
 import org.wikipedia.dataclient.WikiSite
-import org.wikipedia.events.LoggedOutInBackgroundEvent
 import org.wikipedia.login.LoginClient
-import org.wikipedia.settings.Prefs
 import org.wikipedia.util.log.L
 import java.io.IOException
 import java.util.concurrent.Semaphore
@@ -19,79 +18,55 @@ object CsrfTokenClient {
     private const val ANON_TOKEN = "+\\"
     private const val MAX_RETRIES = 3
 
-    fun getToken(site: WikiSite, type: String = "csrf"): Observable<String> {
-        return getToken(site, type, null)
-    }
-
-    fun getToken(site: WikiSite, type: String = "csrf", svc: Service?): Observable<String> {
-        return Observable.create { emitter ->
-            var token = ""
+    suspend fun getToken(site: WikiSite, type: String = "csrf", svc: Service? = null): String {
+        var token = ""
+        withContext(Dispatchers.IO) {
             try {
                 MUTEX.acquire()
                 val service = svc ?: ServiceFactory.get(site)
-
-                if (emitter.isDisposed) {
-                    return@create
-                }
                 var lastError: Throwable? = null
                 for (retry in 0 until MAX_RETRIES) {
-                    if (retry > 0) {
-                        // Log in explicitly
-                        LoginClient().loginBlocking(site, AccountUtil.userName!!, AccountUtil.password!!, "")
-                                .subscribeOn(Schedulers.io())
-                                .blockingSubscribe({ }) {
-                                    L.e(it)
-                                    lastError = it
-                                }
+                    try {
+                        val tokenResponse = service.getToken(type)
+                        token = if (type == "rollback") {
+                            tokenResponse.query?.rollbackToken().orEmpty()
+                        } else {
+                            tokenResponse.query?.csrfToken().orEmpty()
+                        }
+                        if (tokenRequiresLogin(token)) {
+                            L.d("App believes we're logged in, but got anonymous token. Logging in explicitly...")
+                            // Regardless of which WikiSite the token is being requested from, the login call
+                            // should be done on the primary WikiSite of the app itself.
+                            val loginResult = LoginClient().loginBlocking(WikipediaApp.instance.wikiSite, AccountUtil.userName, AccountUtil.password!!)
+                            // If the login sequence results in anything but PASS, then don't bother retrying.
+                            // Retrying is intended only for network errors, which would result in an exception, which is caught below.
+                            if (!loginResult.pass()) {
+                                AccountUtil.bailWithLogout()
+                                break
+                            }
+                        }
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (e: Throwable) {
+                        L.e(e)
+                        lastError = e
                     }
-                    if (emitter.isDisposed) {
-                        return@create
-                    }
-
-                    service.getTokenObservable(type)
-                            .subscribeOn(Schedulers.io())
-                            .blockingSubscribe({
-                                if (type == "rollback") {
-                                    token = it.query?.rollbackToken().orEmpty()
-                                } else {
-                                    token = it.query?.csrfToken().orEmpty()
-                                }
-                                if (AccountUtil.isLoggedIn && token == ANON_TOKEN) {
-                                    throw RuntimeException("App believes we're logged in, but got anonymous token.")
-                                }
-                            }, {
-                                L.e(it)
-                                lastError = it
-                            })
-                    if (emitter.isDisposed) {
-                        return@create
-                    }
-
-                    if (token.isEmpty() || (AccountUtil.isLoggedIn && token == ANON_TOKEN)) {
+                    if (token.isEmpty() || tokenRequiresLogin(token)) {
                         continue
                     }
                     break
                 }
-                if (token.isEmpty() || (AccountUtil.isLoggedIn && token == ANON_TOKEN)) {
-                    if (token == ANON_TOKEN) {
-                        bailWithLogout()
-                    }
+                if (token.isEmpty() || tokenRequiresLogin(token)) {
                     throw lastError ?: IOException("Invalid token, or login failure.")
                 }
-            } catch (t: Throwable) {
-                emitter.onError(t)
             } finally {
                 MUTEX.release()
             }
-            emitter.onNext(token)
-            emitter.onComplete()
         }
+        return token
     }
 
-    private fun bailWithLogout() {
-        // Signal to the rest of the app that we're explicitly logging out in the background.
-        WikipediaApp.instance.logOut()
-        Prefs.loggedOutInBackground = true
-        WikipediaApp.instance.bus.post(LoggedOutInBackgroundEvent())
+    private fun tokenRequiresLogin(token: String): Boolean {
+        return (AccountUtil.isLoggedIn && !AccountUtil.isTemporaryAccount && token == ANON_TOKEN)
     }
 }

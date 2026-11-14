@@ -1,5 +1,6 @@
 package org.wikipedia.descriptions
 
+import org.wikipedia.language.AppLanguageLookUpTable
 import org.wikipedia.page.Page
 
 object DescriptionEditUtil {
@@ -8,7 +9,7 @@ object DescriptionEditUtil {
     private const val DESCRIPTION_SOURCE_WIKIDATA = "central"
 
     fun wikiUsesLocalDescriptions(lang: String): Boolean {
-        return lang == "en" || lang == "test"
+        return lang == "en" || lang.startsWith(AppLanguageLookUpTable.TEST_LANGUAGE_CODE)
     }
 
     fun isEditAllowed(page: Page): Boolean {
@@ -16,7 +17,7 @@ object DescriptionEditUtil {
             // For English Wikipedia, allow editing the description for all articles, since the
             // edit will go directly into the article instead of Wikidata.
             true
-        } else !page.pageProperties.wikiBaseItem.isNullOrEmpty() &&
-                page.pageProperties.descriptionSource != DESCRIPTION_SOURCE_LOCAL
+        } else !page.summary.wikiBaseItem.isNullOrEmpty() &&
+                page.summary.descriptionSource != DESCRIPTION_SOURCE_LOCAL
     }
 }

@@ -7,34 +7,36 @@ import android.graphics.Canvas
 import android.graphics.Rect
 import android.graphics.drawable.BitmapDrawable
 import android.graphics.drawable.Drawable
+import android.text.Annotation
 import android.text.Editable
 import android.text.Html.ImageGetter
 import android.text.Html.TagHandler
 import android.text.Spannable
 import android.text.Spanned
 import android.text.style.LeadingMarginSpan
+import android.text.style.ParagraphStyle
 import android.text.style.TypefaceSpan
 import android.text.style.URLSpan
 import android.widget.TextView
 import androidx.core.graphics.applyCanvas
+import androidx.core.graphics.createBitmap
+import androidx.core.graphics.drawable.toDrawable
 import androidx.core.text.HtmlCompat
 import androidx.core.text.getSpans
 import androidx.core.text.parseAsHtml
 import androidx.core.text.toSpanned
-import com.bumptech.glide.Glide
-import com.bumptech.glide.request.target.CustomTarget
-import com.bumptech.glide.request.transition.Transition
 import org.wikipedia.dataclient.Service
 import org.wikipedia.dataclient.WikiSite
 import org.wikipedia.util.DimenUtil
 import org.wikipedia.util.ResourceUtil
-import org.wikipedia.util.WhiteBackgroundTransformation
 import org.wikipedia.util.log.L
+import org.wikipedia.views.imageservice.ImageService
 import org.xml.sax.Attributes
 import org.xml.sax.ContentHandler
 import org.xml.sax.Locator
 import org.xml.sax.XMLReader
 import java.util.Stack
+import java.util.WeakHashMap
 
 class CustomHtmlParser(private val handler: TagHandler) : TagHandler, ContentHandler {
     interface TagHandler {
@@ -110,9 +112,11 @@ class CustomHtmlParser(private val handler: TagHandler) : TagHandler, ContentHan
 
     class CustomTagHandler(private val view: TextView?) : TagHandler {
         private var lastAClass = ""
+        private var hiddenSpanDepth = 0
+        private var hiddenSpanStartPos = -1
+        private val openSpanIsSearchMatch = ArrayDeque<Boolean>()
         private var listItemCounts = Stack<Int>()
         private val listParents = mutableListOf<String>()
-        private val leadingMarginSize = DimenUtil.dpToPx(16f).toInt()
 
         override fun handleTag(opening: Boolean, tag: String?, output: Editable?, attributes: Attributes?): Boolean {
             if (tag == "img" && view == null) {
@@ -135,8 +139,8 @@ class CustomHtmlParser(private val handler: TagHandler) : TagHandler, ContentHan
 
                     if (drawable == null || drawable.bitmap.isRecycled) {
                         // give it a placeholder drawable of the appropriate size
-                        drawable = BitmapDrawable(view.context.resources,
-                            Bitmap.createBitmap(imgWidth, imgHeight, Bitmap.Config.RGB_565))
+                        drawable = createBitmap(imgWidth, imgHeight, Bitmap.Config.RGB_565)
+                            .toDrawable(view.context.resources)
                         bmpMap[imgSrc] = drawable
 
                         drawable.setBounds(0, 0, imgWidth, imgHeight)
@@ -148,21 +152,15 @@ class CustomHtmlParser(private val handler: TagHandler) : TagHandler, ContentHan
                             uri = Service.COMMONS_URL + uri.replace("./", "")
                         }
 
-                        Glide.with(view)
-                            .asBitmap()
-                            .load(uri)
-                            .into(object : CustomTarget<Bitmap>() {
-                                override fun onResourceReady(resource: Bitmap, transition: Transition<in Bitmap>?) {
-                                    if (!drawable.bitmap.isRecycled) {
-                                        drawable.bitmap.applyCanvas {
-                                            drawBitmap(resource, Rect(0, 0, resource.width, resource.height), drawable.bounds, null)
-                                        }
-                                        WhiteBackgroundTransformation.maybeDimImage(drawable.bitmap)
-                                        view.postInvalidate()
-                                    }
+                        ImageService.loadImage(view.context, uri, onSuccess = { bitmap ->
+                        val newBitmap = bitmap.copy(Bitmap.Config.ARGB_8888, true)
+                        if (!drawable.bitmap.isRecycled) {
+                                drawable.bitmap.applyCanvas {
+                                    drawBitmap(newBitmap, Rect(0, 0, bitmap.width, bitmap.height), drawable.bounds, null)
                                 }
-                                override fun onLoadCleared(placeholder: Drawable?) { }
-                            })
+                                view.postInvalidate()
+                            }
+                        })
                     }
                 }
             } else if (tag == "a") {
@@ -201,6 +199,50 @@ class CustomHtmlParser(private val handler: TagHandler) : TagHandler, ContentHan
                 }
             } else if (tag == "li" && listParents.isNotEmpty() && !opening && output != null) {
                 handleListTag(output)
+            } else if (tag == "span" && output != null) {
+                val styleAttr = getValue(attributes, "style").orEmpty()
+                val classAttr = getValue(attributes, "class").orEmpty()
+                if (opening) {
+                    if (hiddenSpanDepth > 0) {
+                        // Already inside a hidden span, just track nesting depth.
+                        hiddenSpanDepth++
+                    } else if (styleAttr.contains("display:none") || styleAttr.contains("display: none")) {
+                        // Entering a new hidden span. Record the output position so we can
+                        // truncate everything appended while inside this span.
+                        hiddenSpanDepth = 1
+                        hiddenSpanStartPos = output.length
+                    } else {
+                        val isSearchMatch = styleAttr.contains("searchmatch") || classAttr.contains("searchmatch")
+                        openSpanIsSearchMatch.addLast(isSearchMatch)
+                        if (isSearchMatch) {
+                            val key = if (styleAttr.contains("searchmatch")) "style" else "class"
+                            output.setSpan(Annotation(key, "searchmatch"), output.length, output.length, Spannable.SPAN_INCLUSIVE_INCLUSIVE)
+                        }
+                    }
+                } else {
+                    if (hiddenSpanDepth > 0) {
+                        hiddenSpanDepth--
+                        if (hiddenSpanDepth == 0 && hiddenSpanStartPos >= 0) {
+                            // The outermost hidden span has closed. Remove all content
+                            // that was appended while we were inside it.
+                            if (hiddenSpanStartPos < output.length) {
+                                output.delete(hiddenSpanStartPos, output.length)
+                            }
+                            hiddenSpanStartPos = -1
+                        }
+                    } else if (openSpanIsSearchMatch.removeLastOrNull() == true) {
+                        val spans = output.getSpans<Annotation>(output.length)
+                        val matchSpan = spans.lastOrNull {
+                            (it.key == "style" || it.key == "class") && it.value == "searchmatch" &&
+                                    output.getSpanFlags(it) == Spannable.SPAN_INCLUSIVE_INCLUSIVE
+                        }
+                        if (matchSpan != null) {
+                            val start = output.getSpanStart(matchSpan)
+                            output.removeSpan(matchSpan)
+                            output.setSpan(Annotation(matchSpan.key, matchSpan.value), start, output.length, 0)
+                        }
+                    }
+                }
             }
             return false
         }
@@ -209,13 +251,23 @@ class CustomHtmlParser(private val handler: TagHandler) : TagHandler, ContentHan
             if (listParents.last() == "ol") {
                 val count = (if (listItemCounts.size > 0) listItemCounts.pop() else 0) + 1
                 listItemCounts.push(count)
-                val spans = output.getSpans<LeadingMarginSpan>(output.length)
-                if (spans.isNotEmpty()) {
-                    val span = spans.last()
+                // TODO: improve this logic to no longer require explicitly inserting the count
+                // into the output text. This requires manual and fragile manipulation of any
+                // existing spans that may be present in the output text.
+                val paragraphSpans = output.getSpans<ParagraphStyle>(output.length)
+                var lastLeadingSpan: LeadingMarginSpan? = null
+                paragraphSpans.forEach {
+                    if (it !is LeadingMarginSpan) {
+                        output.removeSpan(it)
+                    } else {
+                        lastLeadingSpan = it
+                    }
+                }
+                lastLeadingSpan?.let { span ->
                     val spanStart = output.getSpanStart(span)
                     output.removeSpan(span)
                     output.insert(spanStart, "$count. ")
-                    output.setSpan(LeadingMarginSpan.Standard(leadingMarginSize), spanStart, output.length, 0)
+                    output.setSpan(LeadingMarginSpan.Standard(DimenUtil.roundedDpToPx(16f)), spanStart, output.length, 0)
                 }
             }
         }
@@ -247,7 +299,7 @@ class CustomHtmlParser(private val handler: TagHandler) : TagHandler, ContentHan
 
     companion object {
         private const val MIN_IMAGE_SIZE = 64
-        private val contextBmpMap = mutableMapOf<Context, MutableMap<String, BitmapDrawable>>()
+        private val contextBmpMap = WeakHashMap<Context, MutableMap<String, BitmapDrawable>>()
 
         fun fromHtml(html: String?, view: TextView? = null): Spanned {
             var sourceStr = html.orEmpty()
@@ -262,6 +314,10 @@ class CustomHtmlParser(private val handler: TagHandler) : TagHandler, ContentHan
             sourceStr = sourceStr.replace("&#8206;", "\u200E")
                 .replace("&#8207;", "\u200F")
                 .replace("&amp;", "&")
+
+            // Add <small> tag in the <sub> or <sup> tags to make the text 3 times smaller
+            sourceStr = sourceStr.replace("<sub>", "<sub><small><small><small>").replace("</sub>", "</small></small></small></sub>")
+                .replace("<sup>", "<sup><small><small><small>").replace("</sup>", "</small></small></small></sup>")
 
             // TODO: Investigate if it's necessary to inject a dummy tag at the beginning of the
             // text, since there are reports that XmlReader ignores the first tag by default?

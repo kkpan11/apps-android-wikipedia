@@ -6,13 +6,15 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
 import androidx.core.view.isInvisible
+import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
-import kotlinx.coroutines.*
+import kotlinx.coroutines.CoroutineExceptionHandler
+import kotlinx.coroutines.launch
 import org.wikipedia.R
 import org.wikipedia.WikipediaApp
 import org.wikipedia.database.AppDatabase
@@ -36,8 +38,8 @@ class RecentSearchesFragment : Fragment() {
     }
 
     private var _binding: FragmentSearchRecentBinding? = null
-    private val binding get() = _binding!!
-    private val namespaceHints = listOf(Namespace.USER, Namespace.PORTAL, Namespace.HELP)
+    val binding get() = _binding!!
+    private val namespaceHints = listOf(Namespace.USER, Namespace.PORTAL, Namespace.HELP, Namespace.PROJECT, Namespace.TEMPLATE)
     private val namespaceMap = ConcurrentHashMap<String, Map<Namespace, String>>()
     private val coroutineExceptionHandler = CoroutineExceptionHandler { _, throwable -> L.e(throwable) }
     var callback: Callback? = null
@@ -61,12 +63,15 @@ class RecentSearchesFragment : Fragment() {
         binding.addLanguagesButton.setOnClickListener { onAddLangButtonClick() }
         binding.recentSearchesRecycler.layoutManager = LinearLayoutManager(requireActivity())
         binding.namespacesRecycler.layoutManager = LinearLayoutManager(requireActivity(), RecyclerView.HORIZONTAL, false)
+
         binding.recentSearchesRecycler.adapter = RecentSearchAdapter()
+
         val touchCallback = SwipeableItemTouchHelperCallback(requireContext())
         touchCallback.swipeableEnabled = true
         val itemTouchHelper = ItemTouchHelper(touchCallback)
         itemTouchHelper.attachToRecyclerView(binding.recentSearchesRecycler)
         setButtonTooltip(binding.recentSearchesDeleteButton)
+
         return binding.root
     }
 
@@ -102,14 +107,13 @@ class RecentSearchesFragment : Fragment() {
         callback?.onAddLanguageClicked()
     }
 
-    fun onLangCodeChanged() {
+    fun reloadRecentSearches() {
         lifecycleScope.launch(coroutineExceptionHandler) {
             updateList()
         }
     }
 
     suspend fun updateList() {
-        val searches: List<RecentSearch>
         val nsMap: Map<String, MwQueryResult.Namespace>
         val langCode = callback?.getLangCode().orEmpty()
 
@@ -122,31 +126,33 @@ class RecentSearchesFragment : Fragment() {
             }
         }
 
-        searches = AppDatabase.instance.recentSearchDao().getRecentSearches()
+        val searches: List<RecentSearch> = AppDatabase.instance.recentSearchDao().getRecentSearches()
 
         recentSearchList.clear()
         recentSearchList.addAll(searches)
 
+        val searchesEmpty = recentSearchList.isEmpty()
         binding.namespacesRecycler.adapter = NamespaceAdapter()
         binding.recentSearchesRecycler.adapter?.notifyDataSetChanged()
-
-        val searchesEmpty = recentSearchList.isEmpty()
         binding.searchEmptyContainer.isInvisible = !searchesEmpty
         updateSearchEmptyView(searchesEmpty)
         binding.recentSearches.isInvisible = searchesEmpty
+        binding.namespacesContainer.isVisible = !namespaceMap[langCode].isNullOrEmpty()
     }
 
-    private inner class RecentSearchItemViewHolder constructor(itemView: View) : RecyclerView.ViewHolder(itemView), View.OnClickListener, SwipeableItemTouchHelperCallback.Callback {
+    private open inner class RecentSearchItemViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView), View.OnClickListener, SwipeableItemTouchHelperCallback.Callback {
         private lateinit var recentSearch: RecentSearch
 
-        fun bindItem(position: Int) {
+        open fun bindItem(position: Int) {
             recentSearch = recentSearchList[position]
             itemView.setOnClickListener(this)
             (itemView as TextView).text = recentSearch.text
         }
 
         override fun onClick(v: View) {
-            callback?.switchToSearch((v as TextView).text.toString())
+            val text = (v as TextView).text.toString()
+
+            callback?.switchToSearch(text)
         }
 
         override fun onSwipe() {
@@ -173,13 +179,15 @@ class RecentSearchesFragment : Fragment() {
         }
     }
 
-    private inner class NamespaceItemViewHolder constructor(itemView: View) : RecyclerView.ViewHolder(itemView), View.OnClickListener {
+    private inner class NamespaceItemViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView), View.OnClickListener {
         fun bindItem(ns: Namespace?) {
             val isHeader = ns == null
-            itemView.setOnClickListener(this)
-            (itemView as TextView).text = if (isHeader) getString(R.string.search_namespaces) else namespaceMap[callback?.getLangCode()]?.get(ns).orEmpty() + ":"
-            itemView.isEnabled = !isHeader
-            itemView.setTextColor(ResourceUtil.getThemedColor(requireContext(), if (isHeader) R.attr.primary_color else R.attr.progressive_color))
+            (itemView as TextView).apply {
+                setOnClickListener(this@NamespaceItemViewHolder)
+                text = if (isHeader) getString(R.string.search_namespaces) else namespaceMap[callback?.getLangCode()]?.get(ns).orEmpty() + ":"
+                isEnabled = !isHeader
+                setTextColor(ResourceUtil.getThemedColor(requireContext(), if (isHeader) R.attr.primary_color else R.attr.progressive_color))
+            }
         }
 
         override fun onClick(v: View) {

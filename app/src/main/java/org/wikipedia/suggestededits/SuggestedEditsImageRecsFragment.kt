@@ -2,7 +2,6 @@ package org.wikipedia.suggestededits
 
 import android.content.pm.ActivityInfo
 import android.graphics.drawable.GradientDrawable
-import android.net.Uri
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.Menu
@@ -17,6 +16,7 @@ import android.widget.LinearLayout
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.coordinatorlayout.widget.CoordinatorLayout
 import androidx.core.content.ContextCompat
+import androidx.core.net.toUri
 import androidx.core.os.bundleOf
 import androidx.core.view.MenuProvider
 import androidx.core.view.isVisible
@@ -49,19 +49,20 @@ import org.wikipedia.settings.Prefs
 import org.wikipedia.util.DimenUtil
 import org.wikipedia.util.FeedbackUtil
 import org.wikipedia.util.ImageUrlUtil
+import org.wikipedia.util.Resource
 import org.wikipedia.util.ResourceUtil
 import org.wikipedia.util.StringUtil
 import org.wikipedia.util.UriUtil
 import org.wikipedia.util.log.L
-import org.wikipedia.views.FaceAndColorDetectImageView
 import org.wikipedia.views.ImageZoomHelper
+import org.wikipedia.views.imageservice.ImageLoadListener
+import org.wikipedia.views.imageservice.ImageService
 
 class SuggestedEditsImageRecsFragment : SuggestedEditsItemFragment(), MenuProvider, SuggestedEditsImageRecsDialog.Callback {
     private var _binding: FragmentSuggestedEditsImageRecsItemBinding? = null
     private val binding get() = _binding!!
 
-    private val viewModel: SuggestedEditsImageRecsFragmentViewModel by viewModels { SuggestedEditsImageRecsFragmentViewModel.Factory(
-        bundleOf(ARG_LANG to WikipediaApp.instance.appOrSystemLanguageCode)) }
+    private val viewModel: SuggestedEditsImageRecsFragmentViewModel by viewModels()
 
     private var infoClicked = false
     private var scrolled = false
@@ -83,7 +84,11 @@ class SuggestedEditsImageRecsFragment : SuggestedEditsItemFragment(), MenuProvid
                 .show()
             ImageRecommendationsEvent.logAction("editsummary_success_confirm", "editsummary_dialog",
                 getActionStringForAnalytics(acceptanceState = "accepted", revisionId = revId, addTimeSpent = true), viewModel.langCode)
-            EditAttemptStepEvent.logSaveSuccess(viewModel.pageTitle)
+            EditAttemptStepEvent.logSaveSuccess(
+                pageTitle = viewModel.pageTitle,
+                revisionId = revId,
+                editCount = (viewModel.editCount + 1)
+            )
             viewModel.acceptRecommendation(null, revId)
             callback().nextPage(this)
         }
@@ -130,7 +135,7 @@ class SuggestedEditsImageRecsFragment : SuggestedEditsItemFragment(), MenuProvid
         binding.acceptButton.setOnClickListener {
             ImageRecommendationsEvent.logAction("suggestion_accept", "recommendedimagetoolbar",
                 getActionStringForAnalytics(acceptanceState = "accepted"), viewModel.langCode)
-            EditAttemptStepEvent.logInit(viewModel.pageTitle)
+            EditAttemptStepEvent.logInit(pageTitle = viewModel.pageTitle, editCount = viewModel.editCount)
             doPublish()
         }
 
@@ -180,10 +185,10 @@ class SuggestedEditsImageRecsFragment : SuggestedEditsItemFragment(), MenuProvid
             repeatOnLifecycle(Lifecycle.State.CREATED) {
                 viewModel.uiState.collect {
                     when (it) {
-                        is SuggestedEditsImageRecsFragmentViewModel.UiState.Loading -> onLoading()
-                        is SuggestedEditsImageRecsFragmentViewModel.UiState.Success -> onLoadSuccess()
-                        is SuggestedEditsImageRecsFragmentViewModel.UiState.Depleted -> onDepletedState()
-                        is SuggestedEditsImageRecsFragmentViewModel.UiState.Error -> onError(it.throwable)
+                        is Resource.Loading -> onLoading()
+                        is Resource.Success -> onLoadSuccess()
+                        is SuggestedEditsImageRecsFragmentViewModel.Depleted -> onDepletedState()
+                        is Resource.Error -> onError(it.throwable)
                     }
                 }
             }
@@ -243,10 +248,11 @@ class SuggestedEditsImageRecsFragment : SuggestedEditsItemFragment(), MenuProvid
 
         val thumbUrl = UriUtil.resolveProtocolRelativeUrl(ImageUrlUtil.getUrlForPreferredSize(viewModel.recommendation.images[0].metadata!!.thumbUrl, Constants.PREFERRED_CARD_THUMBNAIL_SIZE))
 
-        binding.imageView.loadImage(Uri.parse(thumbUrl),
-            roundedCorners = false, cropped = false, listener = object : FaceAndColorDetectImageView.OnImageLoadListener {
-                override fun onImageLoaded(palette: Palette, bmpWidth: Int, bmpHeight: Int) {
+        binding.imageView.loadImage(thumbUrl.toUri(),
+            listener = object : ImageLoadListener {
+                override fun onSuccess(image: Any, width: Int, height: Int) {
                     if (isAdded) {
+                        val palette = Palette.from(ImageService.getBitmap(image)).generate()
                         var color1 = palette.getLightVibrantColor(ContextCompat.getColor(requireContext(), R.color.gray600))
                         var color2 = palette.getLightMutedColor(ContextCompat.getColor(requireContext(), R.color.gray300))
                         if (WikipediaApp.instance.currentTheme.isDark) {
@@ -259,19 +265,19 @@ class SuggestedEditsImageRecsFragment : SuggestedEditsItemFragment(), MenuProvid
 
                         val params = binding.imageInfoButton.layoutParams as FrameLayout.LayoutParams
                         val containerAspect = binding.imageViewContainer.width.toFloat() / binding.imageViewContainer.height.toFloat()
-                        val bmpAspect = bmpWidth.toFloat() / bmpHeight.toFloat()
+                        val bmpAspect = width.toFloat() / height.toFloat()
 
                         if (bmpAspect > containerAspect) {
                             params.marginEnd = DimenUtil.roundedDpToPx(8f)
                         } else {
-                            val width = binding.imageViewContainer.height.toFloat() * bmpAspect
-                            params.marginEnd = DimenUtil.roundedDpToPx(8f) + (binding.imageViewContainer.width / 2 - width.toInt() / 2)
+                            val containerWidth = binding.imageViewContainer.height.toFloat() * bmpAspect
+                            params.marginEnd = DimenUtil.roundedDpToPx(8f) + (binding.imageViewContainer.width / 2 - containerWidth.toInt() / 2)
                         }
                         binding.imageInfoButton.layoutParams = params
                     }
                 }
 
-                override fun onImageFailed() {}
+                override fun onError(error: Throwable) {}
             })
 
         binding.imageCaptionText.text = viewModel.recommendation.images.first().metadata?.caption.orEmpty().trim()
@@ -313,7 +319,7 @@ class SuggestedEditsImageRecsFragment : SuggestedEditsItemFragment(), MenuProvid
 
     override fun onPrepareMenu(menu: Menu) {
         super.onPrepareMenu(menu)
-        menu.findItem(R.id.menu_tutorial).isVisible = viewModel.uiState.value is SuggestedEditsImageRecsFragmentViewModel.UiState.Success
+        menu.findItem(R.id.menu_tutorial).isVisible = viewModel.uiState.value is Resource.Success
     }
 
     override fun onMenuItemSelected(menuItem: MenuItem): Boolean {
@@ -334,9 +340,9 @@ class SuggestedEditsImageRecsFragment : SuggestedEditsItemFragment(), MenuProvid
             R.id.menu_report_feature -> {
                 ImageRecommendationsEvent.logAction("report_problem", "recommendedimagetoolbar",
                     getActionStringForAnalytics(), viewModel.langCode)
-                FeedbackUtil.composeFeedbackEmail(requireContext(),
-                    getString(R.string.email_report_image_recommendations_subject),
-                    getString(R.string.email_report_image_recommendations_body))
+                FeedbackUtil.composeEmail(requireContext(),
+                    subject = getString(R.string.email_report_image_recommendations_subject),
+                    body = getString(R.string.email_report_image_recommendations_body))
                 true
             }
             else -> false
@@ -436,9 +442,11 @@ class SuggestedEditsImageRecsFragment : SuggestedEditsItemFragment(), MenuProvid
         publish()
     }
 
-    private fun getActionStringForAnalytics(acceptanceState: String? = null, rejectionReasons: String? = null,
-                                            revisionId: Long? = null, addTimeSpent: Boolean = false): String {
-        val recommendedImage = if (viewModel.uiState.value is SuggestedEditsImageRecsFragmentViewModel.UiState.Success) viewModel.recommendation.images[0] else null
+    private fun getActionStringForAnalytics(
+        acceptanceState: String? = null, rejectionReasons: String? = null,
+        revisionId: Long? = null, addTimeSpent: Boolean = false,
+    ): String {
+        val recommendedImage = if (viewModel.uiState.value is Resource.Success) viewModel.recommendation.images[0] else null
         return ImageRecommendationsEvent.getActionDataString(filename = recommendedImage?.image,
             recommendationSource = recommendedImage?.source,
             recommendationSourceProjects = recommendedImage?.projects.toString(),
@@ -461,11 +469,11 @@ class SuggestedEditsImageRecsFragment : SuggestedEditsItemFragment(), MenuProvid
     companion object {
         const val ARG_LANG = "lang"
         const val MIN_TIME_WARNING_MILLIS = 5000
-        const val IMAGE_REC_EDIT_COMMENT_TOP = "#suggestededit-add-image-top"
-        const val IMAGE_REC_EDIT_COMMENT_INFOBOX = "#suggestededit-add-image-infobox"
 
         fun newInstance(): SuggestedEditsItemFragment {
-            return SuggestedEditsImageRecsFragment()
+            return SuggestedEditsImageRecsFragment().apply {
+                arguments = bundleOf(ARG_LANG to WikipediaApp.instance.appOrSystemLanguageCode)
+            }
         }
     }
 }

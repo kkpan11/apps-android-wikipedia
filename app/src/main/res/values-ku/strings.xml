@@ -21,7 +21,7 @@
   <string name="nav_item_forward">Pêşve</string>
   <string name="search_hint">Li Wîkîpediyayê bigere</string>
   <string name="search_hint_voice_search">Lêgerîna ketana dengê</string>
-  <string name="search_hint_search_languages">Li zimanekî bigere</string>
+  <string name="search_hint_search_languages">Zimanekî lê bigere</string>
   <string name="filter_hint_filter_my_lists_and_articles">Lîsteyên min parzûn bike</string>
   <string name="nav_item_suggested_edits">Guhartin</string>
   <string name="nav_item_more">Zêdetir</string>
@@ -35,20 +35,20 @@
   <string name="page_error_back_to_main">Vegere</string>
   <string name="error_back">Vegere</string>
   <string name="error_next">Pêşve</string>
-  <string name="menu_clear_all_history">Dîrokê paqij bike</string>
+  <string name="menu_clear_all_history" fuzzy="true">Dîrokê paqij bike</string>
   <string name="history_item_deleted">%s ji dîroka gerokê hate rakirin</string>
   <string name="history_items_deleted">%d gotar ji dîrokê hatin rakirin</string>
   <string name="history_item_delete_undo">Betal bike</string>
   <string name="notification_archive_undo">Vegerîne</string>
   <string name="app_settings">Eyarên sepanê</string>
   <string name="search_tab_tooltip">Ji bo rasterast dest bi nivîsîna peyveke lêgerînê bikî, cardin bitepîne ser îkonê.</string>
-  <string name="history_list_title">Dîrok</string>
+  <string name="history_list_title">Tarîx</string>
   <string name="image_content_description">Wêne: %s</string>
   <string name="page_content_description">Rûpel: %s</string>
   <string name="wikimedia_commons">Wîkîmedya Kommons</string>
   <string name="wikidata">Wîkîdane</string>
   <string name="dialog_title_clear_history">Dîroka lêgerînê jê bibe</string>
-  <string name="dialog_message_clear_history">Ev wê hemû dîroka çavlêgerandinên te jê bibe, û hemû paceyên ku niha vekirî bin bigire. Jidil dixwazî?</string>
+  <string name="dialog_message_clear_history" fuzzy="true">Ev wê hemû dîroka çavlêgerandinên te jê bibe, û hemû paceyên ku niha vekirî bin bigire. Jidil dixwazî?</string>
   <string name="dialog_message_clear_history_yes">Erê</string>
   <string name="dialog_message_clear_history_no">Na</string>
   <string name="share_via">Bi awayê $ parve bike</string>
@@ -61,7 +61,7 @@
   <string name="page_edit_history_filter_by">Biparzîne bi</string>
   <string name="page_edit_history_filter_by_all">Temamê guhartinan (%s)</string>
   <string name="page_edit_history_filter_by_user">Guhartinên bikarhêner (%s)</string>
-  <string name="page_edit_history_filter_by_anon">Guhartinên anonîm (%s)</string>
+  <string name="page_edit_history_filter_by_anon" fuzzy="true">Guhartinên anonîm (%s)</string>
   <string name="page_edit_history_filter_by_bot">Guherandinên botan (%s)</string>
   <string name="page_edit_history_metrics_content_description">Metrîkên ji %1$s heya %2$s</string>
   <plurals name="page_edit_history_article_edits_since_year">
@@ -143,8 +143,8 @@
   <string name="login_username_hint">Navê bikarhêner</string>
   <string name="login_password_hint">Şîfre</string>
   <string name="account_creation_password_hint">Pêborîn</string>
-  <string name="login_2fa_hint">Koda Pejirandina Nasnameyê ya Du-faktorî</string>
-  <string name="login_2fa_other_workflow_error_msg">Pejirandina nasnameyê ya du-faktorî hewce ye! Xêra xwe vegere fealiyeta esas û bi kilîda xwe ya 2FA\'yê têkeve, paşê dîsa bicerribîne.</string>
+  <string name="login_2fa_hint" fuzzy="true">Koda Pejirandina Nasnameyê ya Du-faktorî</string>
+  <string name="login_2fa_other_workflow_error_msg" fuzzy="true">Pejirandina nasnameyê ya du-faktorî hewce ye! Xêra xwe vegere fealiyeta esas û bi kilîda xwe ya 2FA\'yê têkeve, paşê dîsa bicerribîne.</string>
   <string name="onboarding_card_login">Têkeve</string>
   <string name="page_editing_login">Têkeve</string>
   <string name="reading_lists_sync_login">Têkeve</string>
@@ -219,7 +219,7 @@
   <string name="error_can_not_process_link">Nikare vê lînkê nîşan bide</string>
   <string name="page_protected_autoconfirmed">Ev rûpel nîv-parastî ye</string>
   <string name="page_protected_sysop">Ev rûpel bi temamî parastî ye.</string>
-  <string name="page_protected_other">Ev rûpel tê parastin. Astên parastinê: %s</string>
+  <string name="page_protected_other">Ev rûpel tê parastin. Dereceya parastinê: %s</string>
   <string name="page_protected_can_not_edit">Bibore, hesabê te vêga ne xwediyê mafên bo guherandina vê rûpelê ye.</string>
   <string name="page_protected_can_not_edit_anon">Bibore, ev rûpel vê gavê wek anonîm nikare were guhartin.</string>
   <string name="page_protected_can_not_edit_title">Ev rûpel parastî ye</string>
@@ -231,26 +231,21 @@
   <string name="privacy_policy_description">Siyaseta taybetîtiyê</string>
   <string name="terms_of_use_description">Mercên bikaranînê</string>
   <string name="about_wikipedia_url">https://ku.wikipedia.org/wiki/Wîkîpediya:Derbarê_Wîkîpediyayê_de</string>
-  <string name="offline_reading_and_data_url">https://www.mediawiki.org/wiki/Wikimedia_Apps/Android_FAQ#Offline_reading_and_data</string>
-  <string name="android_app_faq_url">https://www.mediawiki.org/wiki/Wikimedia_Apps/Android_FAQ</string>
-  <string name="android_app_request_an_account_url">https://en.wikipedia.org/wiki/Wikipedia:Request_an_account</string>
-  <string name="android_app_edit_help_url">https://m.mediawiki.org/wiki/Wikimedia_Apps/Suggested_edits</string>
-  <string name="suggested_edits_image_tags_help_url">https://www.mediawiki.org/wiki/Wikimedia_Apps/Suggested_edits#Image_tags</string>
   <string name="about_libraries_heading">Kitêbxaneyên bikarhatî</string>
   <string name="about_contributors_heading">Tevkar</string>
-  <string name="about_contributors">&lt;a href=\"https://www.mediawiki.org/wiki/Wikimedia_Apps/Team/Android\"&gt;Rûpela tîmê&lt;/a&gt;</string>
+  <string name="about_contributors">&lt;a href=\"https://www.mediawiki.org/wiki/Special:MyLanguage/Wikimedia_Apps/Team/Android\"&gt;Rûpela tîmê&lt;/a&gt;</string>
   <string name="about_translators_heading">Wergêr</string>
-  <string name="about_translators_translatewiki">Ev sepan ji aliyê bikarhênerên xwebexş ve li ser &lt;a href=\"https://translatewiki.net\"&gt;translatewiki.netê&lt;/a&gt; hatiye wergerandin.</string>
+  <string name="about_translators_translatewiki">Ev sepan ji aliyê bikarhênerên xwebexş ve li ser &lt;a href=\"https://translatewiki.net\"&gt;translatewiki.netê&lt;/a&gt; hatiye tercimekirin.</string>
   <string name="about_app_license_heading">Destûr</string>
   <string name="about_app_license" fuzzy="true">Koda çavkanî berdest e li ser &lt;a href=\"https://gerrit.wikimedia.org/r/#/admin/projects/apps/android/wikipedia\"&gt;Gerrit&lt;/a&gt; û &lt;a href=\"https://github.com/wikimedia/apps-android-wikipedia\"&gt;Github&lt;/a&gt;ê li bin &lt;a href=\"https://www.apache.org/licenses/LICENSE-2.0\"&gt;Lîsansa Apache 2.0&lt;/a&gt;. Ger bi awayekî din nehatibe diyarkirin, naverok li bin &lt;a href=\"https://en.wikipedia.org/wiki/Wikipedia:Text_of_Creative_Commons_Attribution-ShareAlike_3.0_Unported_License\"&gt;Lîsansa Creatice Commons yê Atfkirin-ParvekirinaWekhevan&lt;/a&gt; berdest e.</string>
   <string name="about_wmf">Berhemeke &lt;a href=\"https://wikimediafoundation.org/\"&gt;Weqfa Wîkîmedyayê&lt;/a&gt;</string>
   <string name="about_activity_title">Derbarê</string>
-  <string name="edit_abandon_confirm">Ev rûpel hat guhartin. Bi rastî dixwazî bêyî tomarkirina guhartinên xwe derkevî?</string>
+  <string name="edit_abandon_confirm">Ev rûpel hat guhartin. Bi rastî dixwazî bêyî qeydkirina guhartinên xwe derkevî?</string>
   <string name="edit_abandon_confirm_yes">Erê</string>
   <string name="edit_abandon_confirm_no">Na</string>
   <string name="user_blocked_from_editing_title">Astengkirî</string>
   <string name="user_logged_in_blocked_from_editing">Hesabê te yê bikarhêneriyê li ser vê wîkiyê hatiye astengkirin.</string>
-  <string name="user_anon_blocked_from_editing">Navnîşana te ya IPê ji bo guhartinan astengkirî ye.</string>
+  <string name="user_anon_blocked_from_editing">Adresa te ya IPê ji bo guhartinan hatiye astengkirin.</string>
   <string name="edit_how_page_improved">Te li ser vê rûpelê çi sererast kir?</string>
   <string name="edit_next">Pêşve</string>
   <string name="edit_done">Biweşîne</string>
@@ -287,16 +282,16 @@
   <string name="page_similar_titles">Rûpelên mîna vê</string>
   <string name="search_did_you_mean">Mebesta te \"%s\" bû?</string>
   <string name="search_recent_header">Lêgerînên dawî:</string>
-  <string name="search_results_count_zero">Encam nînin</string>
+  <string name="search_results_count_zero">Netîce tine</string>
   <plurals name="search_results_count">
-    <item quantity="one">1 encam</item>
-    <item quantity="other">%d encam</item>
+    <item quantity="one">1 netîce</item>
+    <item quantity="other">%d netîceyan</item>
   </plurals>
   <string name="button_clear_all_recent_searches">Lêgerînên dawî paqij bike</string>
-  <string name="clear_recent_searches_confirm">Bi rastî dixwazî dîroka lêgerînê paqij bikî?</string>
+  <string name="clear_recent_searches_confirm">Bi rastî dixwazî tarîxa lêgerînê paqij bikî?</string>
   <string name="clear_recent_searches_confirm_yes">Erê</string>
   <string name="clear_recent_searches_confirm_no">Na</string>
-  <string name="error_browser_not_found">Malpera înternetê nikare were vekirin (sepana gerokê tune)</string>
+  <string name="error_browser_not_found">Websîteya înternetê nikare were vekirin (sepana gerokê tine)</string>
   <string name="table_infobox">Agahiyên praktîk</string>
   <string name="table_other">Zêdetir agahî</string>
   <string name="table_close">Bigre</string>
@@ -310,7 +305,7 @@
   <string name="preference_title_show_images">Wêneyan nîşan bide</string>
   <string name="preference_summary_show_images">Barkirina wêneyan yê li nav rûpelan bigire an veke. Ger girêdana te ya înternetê hêdî be an înterneta te kêm be, vê mîhengê îşaret neke.</string>
   <string name="preference_title_download_only_over_wifi">Tenê ji ser Wîfiyê daxîne</string>
-  <string name="dialog_title_download_only_over_wifi">Daxistina bi rêya înterneta mobîlê dipejirînî?</string>
+  <string name="dialog_title_download_only_over_wifi">Daxistina bi riya înterneta mobîlê qebûl dikî?</string>
   <string name="dialog_text_download_only_over_wifi">Te mîhenga \"Tenê ji ser wîfiyê daxîne\" aktîv kiriye. Tu dixwazî ku tenê ji bo vê daxistinê destûr bidî înterneta xwe mobîl?</string>
   <string name="dialog_title_download_only_over_wifi_allow">Destûr bide</string>
   <string name="read_more_section">Zêdetir bixwîne</string>
@@ -323,10 +318,10 @@
   <string name="gallery_save_progress">Dosye tê daxistin...</string>
   <string name="gallery_save_success">Pel hate tomarkirin.</string>
   <string name="gallery_error_video_failed">Vîdyo nikare were lîstin.</string>
-  <string name="gallery_save_image_write_permission_rationale">Destûra qeydkirina li ser depoya amûra te ji bo daxistina wêneyan hewce ye.</string>
+  <string name="gallery_save_image_write_permission_rationale">Ji bo daxistina resman, îzna qeydkirinê ser depoya cihaza te hewce ye.</string>
   <string name="gallery_edit_button_content_description">Binnivîsa wêneyî biguhêre</string>
   <string name="gallery_add_image_caption_button">Sernavê wêneyî lê zêde bike</string>
-  <string name="gallery_add_image_caption_in_language_button">Sernavê wêneyî lê zêde bike (%s)</string>
+  <string name="gallery_add_image_caption_in_language_button">Nivîsa resmê lê zêde bike (%s)</string>
   <string name="err_cannot_save_file">Dosye nikare bê tomarkirin</string>
   <string name="expand_refs">Ji bo firehkirinê bitepîne</string>
   <string name="cc_logo">Lîsansa Creative Commonsê</string>
@@ -349,7 +344,6 @@
   <string name="page_view_in_browser">Rûpelê di gerokê de bibîne</string>
   <string name="tool_tip_toc_title">Zûgihîna tabloya naverokan</string>
   <string name="tool_tip_toc_text">Tu vêga dikarî bi aliyê çepê ve kaş bikî ji bo tabloya naverokan vekî, û ji xeynî vî li ser vê bişkoka gerokê jî bitikînî û kaş bikî da ku zûtir biçe ser qismên cuda ên gotarekê.</string>
-  <string name="tool_tip_lang_button">Tu vêga dikarî di applîkasyonê de, bi çendîn zimanên Wîkîpediyayê bixwînî û lê bigerî.\n\n\nJi bo zêdetir zimanan tevlî bikî, pêl li îkonê bike.</string>
   <string name="error_response_malformed">Cewaba ji serverê bi şikleke rast nehatiye formatkirin.</string>
   <string name="error_unknown">Çewtiyeke nenas rû da.</string>
   <string name="format_error_server_message">Peyam:\"%s\"</string>
@@ -494,8 +488,8 @@
   <plurals name="reading_list_articles_deleted">
     <item quantity="other">%d gotar ji lîstê hate rakirin</item>
   </plurals>
-  <plurals name="reading_list_articles_deleted_from_list">
-    <item quantity="other">%d gotar ji %s hate rakirin</item>
+  <plurals name="reading_list_articles_deleted_from_list" fuzzy="true">
+    <item quantity="other">%1$d gotar ji %2$s hate rakirin</item>
   </plurals>
   <plurals name="reading_lists_deleted_message">
     <item quantity="one">%d lîst hate jêbirin</item>
@@ -505,7 +499,7 @@
   <string name="reading_lists_item_deleted">%s ji lîstan hate rakirin</string>
   <string name="reading_list_item_delete_undo">Betal bike</string>
   <string name="reading_list_deleted">%s hate jêbirin</string>
-  <string name="saved_list_empty_title">Hêj yê qeydkirî tine ye</string>
+  <string name="saved_list_empty_title" fuzzy="true">Hêj yê qeydkirî tine ye</string>
   <string name="reading_lists_empty_message">Gotaran ji bo paşê bixwînî tevlî lîstekê bike, ger derhêl bî jî karibî.</string>
   <string name="reading_list_empty">Gotarên te tevlî vê lîstê kiriye nînin.</string>
   <string name="reading_list_article_offline">Wek derhêl berdest be</string>
@@ -520,8 +514,7 @@
   <string name="reading_list_confirm_remove_article_from_offline_title">Gotar ji yekî zêdetir lîstan de cih digire</string>
   <string name="reading_list_confirm_remove_article_from_offline_message">%s wê êdî wek derhêl ne berdest in ji bo temamê lîstên xwendinê:</string>
   <string name="reading_lists_sync_reminder_title">Senktonîzekirina lîsta xwendinê bila were vekirin?</string>
-  <string name="reading_lists_sync_reminder_text">Gotarên li lîstên xwendine qeydkirî, vêga dikarin bi hesaba te ya Wîkîpediyayê ve werin senkronîzekirin. &lt;a href=\"https://www.mediawiki.org/wiki/Wikimedia_Apps/Android_FAQ#Synced_reading_lists\"&gt;Zêdetir hîn bibe&lt;/a&gt;</string>
-  <string name="reading_lists_login_reminder_text_with_link">Lîstên xwendinê vêga dikarin bi temamê cîhazan re bên senkronîzekirin. Têkeve hesaba xwe ya Wîkîpediyayê û destûr bide ku lîstên te bên qeydkirin. &lt;a href=\"https://www.mediawiki.org/wiki/Wikimedia_Apps/Android_FAQ#Synced_reading_lists\"&gt;Zêdetir hîn bibe&lt;/a&gt;</string>
+  <string name="reading_lists_sync_reminder_text" fuzzy="true">Gotarên li lîstên xwendine qeydkirî, vêga dikarin bi hesaba te ya Wîkîpediyayê ve werin senkronîzekirin. &lt;a href=\"https://www.mediawiki.org/wiki/Wikimedia_Apps/Android_FAQ#Synced_reading_lists\"&gt;Zêdetir hîn bibe&lt;/a&gt;</string>
   <string name="reading_lists_sync_reminder_action">Senkronîzasyonê aktîv bike</string>
   <string name="reading_list_login_reminder_title">Lîstên xwendinê senkronîze bike</string>
   <string name="reading_lists_login_reminder_text">Lîstên xwendinê vêga li navbera cîhazên te dikarin bên senkronîzekirin. Têkeve hesabê xwe ya Wîkîpediyayê û destûr bide ku lîstên te bên qeydkirin.</string>
@@ -558,7 +551,6 @@
   <string name="reading_lists_menu_create_list">Lîsteke nû çêke</string>
   <string name="reading_lists_menu_sort_by">Rêz bike bi</string>
   <string name="reading_lists_refresh_sync_option">Senkronîzasyonê nû bike</string>
-  <string name="reading_list_preference_login_or_signup_to_enable_sync_dialog_login">Têkeve / xwe qeyd bike</string>
   <plurals name="reading_list_article_offline_message">
     <item quantity="one">Ev gotar wê wek derhêl berdest be.</item>
     <item quantity="other">Ev gotar wê wek derhêl berdest bin.</item>
@@ -749,11 +741,11 @@
   <string name="feed_item_type_main_page">Serrûpela Wîkîpediyayê tevî naveroka bijare yê rojane</string>
   <string name="feed_item_type_randomizer">Gotarên ketober çêke ji bo xwendinê</string>
   <string name="feed_item_type_suggested_edits">Pêşniyarên ji bo tevlîkirina Wîkîpediyayê</string>
-  <string name="feed_empty_message">Ti tişt tine li ser kanala te ya keşfkirinê</string>
+  <string name="feed_empty_message" fuzzy="true">Ti tişt tine li ser kanala te ya keşfkirinê</string>
   <string name="feed_configure_onboarding_action">Xisûsî bike</string>
   <string name="customize_lang_selection_dialog_ok_button_text">Baş e</string>
   <string name="customize_lang_selection_dialog_cancel_button_text">Betal bike</string>
-  <string name="feed_configure_onboarding_text">&lt;strong&gt;Kanala xwe ya keşfkirinê xisûsî bike&lt;/strong&gt;&lt;br /&gt;&lt;br /&gt;Tu vêga dikarî tiştê ku li ser kanala te were nîşandan bibijêrî, û naveroka xwe ya favorî bi pêş derxî.</string>
+  <string name="feed_configure_onboarding_text" fuzzy="true">&lt;strong&gt;Kanala xwe ya keşfkirinê xisûsî bike&lt;/strong&gt;&lt;br /&gt;&lt;br /&gt;Tu vêga dikarî tiştê ku li ser kanala te were nîşandan bibijêrî, û naveroka xwe ya favorî bi pêş derxî.</string>
   <string name="feed_lang_selection_dialog_ok_button_text">Baş e</string>
   <string name="feed_lang_selection_dialog_cancel_button_text">Betal bike</string>
   <string name="feed_accessibility_card_text">Te gihîşt binê binî.</string>
@@ -786,8 +778,6 @@
   <string name="description_edit_voice_input_description">Xistina dengê</string>
   <string name="description_edit_learn_more">Zêdetir hîn bibe derbarê danasînên gotaran</string>
   <string name="description_edit_image_caption_learn_more">Zêdetir hîn bibe derbarê binnivîsên wêneyan</string>
-  <string name="description_edit_description_learn_more_url">https://www.mediawiki.org/wiki/Wikimedia_Apps/Suggested_edits#Article_descriptions</string>
-  <string name="description_edit_image_caption_learn_more_url">https://www.mediawiki.org/wiki/Wikimedia_Apps/Suggested_edits#Image_captions</string>
   <string name="description_too_short">Nivîs pir kurt e.</string>
   <string name="description_ends_with_punctuation">Divê nivîs bi niqteşaniyê xilas nebe.</string>
   <string name="description_starts_with_uppercase">Ger peyva pêşî ne navdêreke xisûsî be, bi herfeke hûrdek dest pê bike.</string>
@@ -879,8 +869,6 @@
   <string name="suggested_edits_feed_card_add_image_caption">Sernavê wêneyê îlawe bike</string>
   <string name="suggested_edits_feed_card_translate_image_caption">Sernavê wêneyê îlawe bike (%s)</string>
   <string name="suggested_edits_feed_card_add_image_tags">Etîketên wêneyê îlawe bike</string>
-  <string name="suggested_edits_snackbar_survey_text">Tecribeya te ya guhartinê çawa bû? Ji kerema xwe deqeyeke xwe veqetîne ji bo tijîkirina anketa di derbarê guhartinên nav-sepanî de.</string>
-  <string name="suggested_edits_snackbar_survey_action_text">Anketê Tijî Bike</string>
   <string name="suggested_edits_task_action_text_add">Tevlî bike</string>
   <string name="suggested_edits_task_action_text_translate">Tercime bike</string>
   <string name="suggested_edits_image_captions">Sernavên wêneyê</string>
@@ -928,15 +916,13 @@
   </plurals>
   <string name="more_language_options">bêhtir</string>
   <string name="wikitext_reference">Çavkanî</string>
-  <string name="main_tooltip_text_v2">Te zanibû ku her kes dikare li ser Wîkîpediyayê sererastkirinan bike?</string>
   <string name="main_tooltip_watchlist_title">Lîsteya şopandinê</string>
   <string name="main_tooltip_watchlist_text">Gotar û rûpelên ku te berê li lîsteya xwe ya şopandinê zêde kiribû li menûya Bêhtir di bin &lt;b&gt;Lîsteya şopandinê&lt;/b&gt; de bibîne.</string>
   <string name="watchlist_page_add_to_watchlist_snackbar_action">Biguhêre</string>
-  <string name="watchlist_page_add_to_watchlist_snackbar_period_for_one_week">ji bonî heftîkê</string>
-  <string name="watchlist_page_add_to_watchlist_snackbar_period_for_one_month">ji bonî heyvekê</string>
-  <string name="watchlist_page_add_to_watchlist_snackbar_period_for_three_months">ji bonî 3 heyvan</string>
-  <string name="watchlist_page_add_to_watchlist_snackbar_period_for_six_months">ji bonî 6 heyvan</string>
-  <string name="watchlist_page_removed_from_watchlist_snackbar">%s û rûpela wê ya gotûbêjê ji lîsteya te ya şopandinê hatine jêbirin.</string>
+  <string name="watchlist_page_add_to_watchlist_snackbar_period_for_one_week" fuzzy="true">ji bonî heftîkê</string>
+  <string name="watchlist_page_add_to_watchlist_snackbar_period_for_one_month" fuzzy="true">ji bonî heyvekê</string>
+  <string name="watchlist_page_add_to_watchlist_snackbar_period_for_three_months" fuzzy="true">ji bonî 3 heyvan</string>
+  <string name="watchlist_page_add_to_watchlist_snackbar_period_for_six_months" fuzzy="true">ji bonî 6 heyvan</string>
   <string name="watchlist_expiry_dialog_one_week">heftîkek</string>
   <string name="watchlist_expiry_dialog_one_month">heyvek</string>
   <string name="watchlist_expiry_dialog_three_months">3 heyv</string>

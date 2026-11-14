@@ -3,21 +3,23 @@ package org.wikipedia.page
 import android.app.Activity
 import android.content.Context
 import android.net.Uri
+import androidx.core.net.toUri
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import org.wikipedia.bridge.CommunicationBridge.JSEventListener
 import org.wikipedia.dataclient.WikiSite
 import org.wikipedia.page.LinkMovementMethodExt.UrlHandlerWithText
 import org.wikipedia.places.PlacesActivity
+import org.wikipedia.util.FeedbackUtil
 import org.wikipedia.util.StringUtil
 import org.wikipedia.util.UriUtil
 import org.wikipedia.util.log.L
 
 abstract class LinkHandler(protected val context: Context) : JSEventListener, UrlHandlerWithText {
-    abstract fun onPageLinkClicked(anchor: String, linkText: String)
-    abstract fun onInternalLinkClicked(title: PageTitle)
-    abstract fun onMediaLinkClicked(title: PageTitle)
-    abstract fun onDiffLinkClicked(title: PageTitle, revisionId: Long)
+    open fun onPageLinkClicked(anchor: String, linkText: String) {}
+    open fun onInternalLinkClicked(title: PageTitle) {}
+    open fun onMediaLinkClicked(title: PageTitle) {}
+    open fun onDiffLinkClicked(title: PageTitle, revisionId: Long) {}
     abstract var wikiSite: WikiSite
 
     // message from JS bridge:
@@ -31,6 +33,12 @@ abstract class LinkHandler(protected val context: Context) : JSEventListener, Ur
 
     override fun onUrlClick(url: String, titleString: String?, linkText: String) {
         var href = url
+        if (href.startsWith("mailto:")) {
+            val emailAddress = href.removePrefix("mailto:")
+            FeedbackUtil.composeEmail(context, emailAddress = emailAddress)
+            return
+        }
+
         if (href.startsWith("//")) {
             // for URLs without an explicit scheme, add our default scheme explicitly.
             href = wikiSite.scheme() + ":" + href
@@ -43,7 +51,7 @@ abstract class LinkHandler(protected val context: Context) : JSEventListener, Ur
         if (eventLoggingParamIndex > 0) {
             href = href.substring(0, eventLoggingParamIndex)
         }
-        var uri = Uri.parse(href)
+        var uri = href.toUri()
         uri.fragment?.run {
             if (contains("cite")) {
                 onPageLinkClicked(this, linkText)
@@ -80,6 +88,8 @@ abstract class LinkHandler(protected val context: Context) : JSEventListener, Ur
                 } else PageTitle.withSeparateFragment(titleStr, uri.fragment, site)
                 if (newTitle.isFilePage) {
                     onMediaLinkClicked(newTitle)
+                } else if (newTitle.isSpecial) {
+                    onExternalLinkClicked(uri)
                 } else {
                     onInternalLinkClicked(newTitle)
                 }

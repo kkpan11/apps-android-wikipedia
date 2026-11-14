@@ -8,6 +8,7 @@
 
         <item name="toolbarStyle">@style/ToolbarStyle</item>
         <item name="actionModeStyle">@style/ActionModeStyle</item>
+        <item name="actionBarPopupTheme">@style/ActionBarTheme</item>
 
         <item name="materialButtonStyle">@style/App.Button</item>
 
@@ -18,10 +19,14 @@
         <item name="android:listViewStyle">@style/ListView</item>
         <item name="android:textViewStyle">@style/RtlAwareTextView</item>
 
+        <item name="materialCardViewStyle">@style/CardViewStyle</item>
+
         <item name="alertDialogTheme">@style/PreferenceDialogTheme</item>
         <item name="materialAlertDialogTheme">@style/AlertDialogTheme</item>
 
         <item name="bottomSheetDialogTheme">@style/App.BottomSheetDialogTheme</item>
+
+        <item name="swipeRefreshLayoutProgressSpinnerBackgroundColor">?attr/background_color</item>
 
         <item name="textInputStyle">@style/TextInputLayoutStyle</item>
         <item name="android:statusBarColor">@android:color/black</item>
@@ -31,6 +36,7 @@
         <item name="longPreferenceStyle">@style/LongPreference</item>
         <item name="intPreferenceStyle">@style/IntPreference</item>
 
+        <item name="android:windowSplashScreenBackground" tools:targetApi="s">@color/splash_background_color</item>
         <item name="android:windowBackground">?attr/border_color</item>
         <item name="android:colorBackground">?attr/background_color</item>
         <item name="android:textColorPrimary">?attr/primary_color</item>
@@ -90,8 +96,9 @@
     </style>
 
     <style name="AppTheme.Splash">
-        <item name="android:windowBackground">@drawable/splash_bg</item>
-        <item name="android:navigationBarColor">@color/gray700</item>
+        <item name="android:navigationBarColor">@color/splash_background_color</item>
+        <item name="android:statusBarColor">@color/splash_background_color</item>
+        <item name="android:windowBackground">@drawable/splash_background_drawable</item>
     </style>
 
     <style name="AppTheme.ActionBar">
@@ -142,11 +149,10 @@
     </style>
 
     <style name="H2.DialogTitle" parent="MaterialAlertDialog.Material3.Title.Text">
-        <item name="android:fontFamily">sans-serif</item>
-        <item name="android:textStyle">bold</item>
-        <item name="android:textSize">20sp</item>
-        <item name="lineHeight">28sp</item>
         <item name="android:textColor">?attr/primary_color</item>
+        <item name="android:singleLine">false</item>
+        <item name="android:maxLines">5</item>
+        <item name="android:ellipsize">end</item>
     </style>
 
     <style name="H2.MessageCard">
@@ -185,6 +191,10 @@
         <item name="android:textColor">?attr/primary_color</item>
     </style>
 
+    <style name="H4.Label">
+        <item name="android:textStyle">normal</item>
+    </style>
+
     <style name="H5">
         <item name="android:fontFamily">sans-serif</item>
         <item name="android:textStyle">bold</item>
@@ -198,14 +208,17 @@
         <item name="lineHeight">24sp</item>
     </style>
 
+    <style name="P.Radio">
+        <item name="android:textColor">?attr/primary_color</item>
+        <item name="android:paddingStart">12dp</item>
+        <item name="android:paddingEnd">0dp</item>
+    </style>
+
     <style name="P.Article">
         <item name="lineHeight">28sp</item>
     </style>
 
     <style name="P.DialogBody" parent="MaterialAlertDialog.Material3.Body.Text">
-        <item name="android:fontFamily">sans-serif</item>
-        <item name="android:textSize">16sp</item>
-        <item name="lineHeight">24sp</item>
         <item name="android:textColor">?attr/secondary_color</item>
     </style>
 
@@ -245,6 +258,19 @@
         <item name="lineHeight">24sp</item>
     </style>
 
+    <style name="Chip.Label">
+        <item name="android:textColor">?attr/primary_color</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:textAllCaps">true</item>
+        <item name="chipBackgroundColor">?attr/background_color</item>
+        <item name="chipStrokeWidth">1dp</item>
+        <item name="chipStrokeColor">?attr/border_color</item>
+        <item name="chipMinTouchTargetSize">0dp</item>
+        <item name="chipMinHeight">24dp</item>
+        <item name="chipStartPadding">0dp</item>
+        <item name="chipEndPadding">0dp</item>
+    </style>
+
     <style name="Chip.Accessible">
         <item name="chipBackgroundColor">?attr/background_color</item>
         <item name="chipStrokeWidth">1dp</item>
@@ -260,6 +286,11 @@
         <item name="chipIconVisible">true</item>
         <item name="iconStartPadding">12dp</item>
         <item name="iconGravity">start</item>
+    </style>
+
+    <style name="Chip.Accessible.Icon.Small">
+        <item name="android:textSize">12sp</item>
+        <item name="lineHeight">18sp</item>
     </style>
 
     <style name="List">
@@ -285,6 +316,7 @@
 
     <style name="PopupMenuStyle" parent="Widget.Material3.PopupMenu">
         <item name="overlapAnchor">true</item>
+        <item name="android:popupBackground">?attr/paper_color</item>
     </style>
 
     <style name="ActionBarStyle" parent="@style/Widget.Material3.Light.ActionBar.Solid">
@@ -298,6 +330,7 @@
 
     <style name="ActionBarTheme" parent="@style/ThemeOverlay.Material3.ActionBar">
         <item name="colorControlNormal">?attr/primary_color</item>
+        <item name="actionOverflowMenuStyle">@style/PopupMenuStyle</item>
     </style>
 
     <style name="ToolbarStyle" parent="@style/Widget.Material3.Toolbar">
@@ -338,6 +371,10 @@
         <item name="android:textStyle">normal</item>
     </style>
 
+    <style name="CardViewStyle" parent="@style/Base.Widget.Material3.CardView">
+        <item name="cardBackgroundColor">?attr/paper_color</item>
+    </style>
+
     <style name="ListView" parent="@style/Widget.AppCompat.ListView">
         <item name="android:divider">@null</item>
         <item name="android:dividerHeight">0dp</item>
@@ -363,16 +400,21 @@
         <item name="android:clickable">true</item>
     </style>
 
-    <style name="OverflowMenuItem" parent="@android:style/TextAppearance">
+    <style name="ListItem" parent="@android:style/TextAppearance">
         <item name="android:layout_width">match_parent</item>
         <item name="android:layout_height">wrap_content</item>
-        <item name="android:paddingStart">16dp</item>
-        <item name="android:paddingEnd">16dp</item>
-        <item name="android:paddingTop">13dp</item>
-        <item name="android:paddingBottom">13dp</item>
+        <item name="android:paddingTop">16dp</item>
+        <item name="android:paddingBottom">16dp</item>
         <item name="android:textColor">?attr/primary_color</item>
         <item name="android:background">?attr/selectableItemBackground</item>
         <item name="android:clickable">true</item>
+    </style>
+
+    <style name="OverflowMenuItem" parent="ListItem">
+        <item name="android:paddingTop">13dp</item>
+        <item name="android:paddingBottom">13dp</item>
+        <item name="android:paddingStart">16dp</item>
+        <item name="android:paddingEnd">16dp</item>
     </style>
 
     <style name="App.Button" parent="@style/Widget.Material3.Button">
@@ -412,6 +454,28 @@
     <style name="App.Button.Text.Secondary">
         <item name="android:textColor">?attr/placeholder_color</item>
         <item name="iconTint">?attr/placeholder_color</item>
+    </style>
+
+    <style name="App.Button.Outline">
+        <item name="android:textColor">?attr/progressive_color</item>
+        <item name="android:backgroundTint">?attr/paper_color</item>
+        <item name="backgroundTint">?attr/paper_color</item>
+        <item name="iconTint">?attr/inactive_color</item>
+        <item name="cornerRadius">8dp</item>
+        <item name="strokeWidth">1dp</item>
+        <item name="strokeColor">?attr/progressive_color</item>
+        <item name="rippleColor">?attr/placeholder_color</item>
+    </style>
+
+    <style name="App.Button.Outline.Small">
+        <item name="android:minHeight">48dp</item>
+        <item name="android:minWidth">0dp</item>
+        <item name="android:paddingStart">16dp</item>
+        <item name="android:paddingEnd">16dp</item>
+        <item name="iconSize">24dp</item>
+        <item name="iconTint">?attr/progressive_color</item>
+        <item name="cornerRadius">16dp</item>
+        <item name="strokeColor">?attr/border_color</item>
     </style>
 
     <style name="ThemeColorCircularButton" parent="@style/Widget.Material3.Button.Icon">
@@ -463,8 +527,48 @@
     </style>
 
     <style name="ImageViewDefault.ReadingListThumbnail">
-        <item name="android:layout_width">28dp</item>
-        <item name="android:layout_height">28dp</item>
+        <item name="android:layout_width">36dp</item>
+        <item name="android:layout_height">36dp</item>
+    </style>
+
+    <style name="RoundedCornerOverlay">
+        <item name="cornerFamily">rounded</item>
+    </style>
+
+    <style name="RoundedCornerOverlay.TopLeft">
+        <item name="cornerSizeTopLeft">16dp</item>
+    </style>
+    <style name="RoundedCornerOverlay.TopRight">
+        <item name="cornerSizeTopRight">16dp</item>
+    </style>
+    <style name="RoundedCornerOverlay.BottomLeft">
+        <item name="cornerSizeBottomLeft">16dp</item>
+    </style>
+    <style name="RoundedCornerOverlay.BottomRight">
+        <item name="cornerSizeBottomRight">16dp</item>
+    </style>
+    <style name="RoundedCornerOverlay.All.Thumb">
+        <item name="cornerSizeTopLeft">8dp</item>
+        <item name="cornerSizeTopRight">8dp</item>
+        <item name="cornerSizeBottomLeft">8dp</item>
+        <item name="cornerSizeBottomRight">8dp</item>
+    </style>
+    <style name="RoundedCornerOverlay.All.Small">
+        <item name="cornerSizeTopLeft">12dp</item>
+        <item name="cornerSizeTopRight">12dp</item>
+        <item name="cornerSizeBottomLeft">12dp</item>
+        <item name="cornerSizeBottomRight">12dp</item>
+    </style>
+    <style name="RoundedCornerOverlay.All">
+        <item name="cornerSizeTopLeft">16dp</item>
+        <item name="cornerSizeTopRight">16dp</item>
+        <item name="cornerSizeBottomLeft">16dp</item>
+        <item name="cornerSizeBottomRight">16dp</item>
+    </style>
+    <style name="ImageViewDefault.Thumb">
+        <item name="android:layout_width">@dimen/defaultThumbnailSize</item>
+        <item name="android:layout_height">@dimen/defaultThumbnailSize</item>
+        <item name="shapeAppearanceOverlay">@style/RoundedCornerOverlay.All.Thumb</item>
     </style>
 
     <style name="CounterOverflowTextAppearance" parent="@style/TextAppearance.Design.Counter.Overflow">
@@ -472,28 +576,10 @@
     </style>
 
     <style name="TextInputLayoutErrorTextAppearance">
-        <item name="android:fontFamily">sans-serif-medium</item>
+        <item name="android:fontFamily">sans-serif</item>
     </style>
 
     <style name="TextInputLayoutStyle" parent="Widget.Material3.TextInputLayout.FilledBox">
-        <item name="android:textColor">?attr/primary_color</item>
-        <item name="android:textColorHint">?attr/placeholder_color</item>
-        <item name="boxBackgroundColor">?attr/background_color</item>
-        <item name="boxStrokeColor">?attr/input_stroke_color_state</item>
-        <item name="hintTextColor">?attr/progressive_color</item>
-        <item name="helperTextTextColor">?attr/placeholder_color</item>
-        <item name="counterTextColor">?attr/placeholder_color</item>
-        <item name="errorTextColor">?attr/destructive_color</item>
-        <item name="boxStrokeErrorColor">?attr/destructive_color</item>
-        <item name="errorTextAppearance">@style/TextInputLayoutErrorTextAppearance</item>
-    </style>
-
-    <style name="TextInputLayoutStyle.EditSection">
-        <item name="android:textColorHighlight">?attr/focus_color</item>
-        <item name="strokeColor">@android:color/transparent</item>
-    </style>
-
-    <style name="SpinnerTextInputLayoutStyle" parent="Widget.MaterialComponents.TextInputLayout.FilledBox.ExposedDropdownMenu">
         <item name="android:textColor">?attr/primary_color</item>
         <item name="android:textColorHint">?attr/placeholder_color</item>
         <item name="boxBackgroundColor">?attr/background_color</item>
@@ -513,22 +599,46 @@
 
     <style name="AlertDialogTheme" parent="ThemeOverlay.Material3.MaterialAlertDialog">
         <item name="colorSurface">?attr/paper_color</item>
+        <item name="colorOnSurface">?attr/primary_color</item>
+        <item name="colorOnSurfaceVariant">?attr/primary_color</item>
         <item name="elevationOverlayEnabled">false</item>
         <item name="materialAlertDialogTitleTextStyle">@style/H2.DialogTitle</item>
         <item name="materialAlertDialogBodyTextStyle">@style/P.DialogBody</item>
+    </style>
+
+    <style name="AlertDialogTheme.AdjustResize">
+        <item name="android:windowSoftInputMode">adjustResize</item>
     </style>
 
     <style name="DialogIconWithTint" parent="MaterialAlertDialog.Material3.Title.Icon.CenterStacked">
         <item name="tint">?attr/primary_color</item>
     </style>
 
+    <style name="AlertDialogTextStyle.Centered" parent="MaterialAlertDialog.Material3.Title.Text.CenterStacked">
+        <item name="android:textAlignment">center</item>
+        <item name="android:textStyle">bold</item>
+    </style>
+
     <style name="AlertDialogTheme.Icon">
         <item name="materialAlertDialogTitlePanelStyle">@style/MaterialAlertDialog.Material3.Title.Panel.CenterStacked</item>
         <item name="materialAlertDialogTitleIconStyle">@style/DialogIconWithTint</item>
+        <item name="materialAlertDialogTitleTextStyle">@style/AlertDialogTextStyle.Centered</item>
+    </style>
+
+    <style name="DialogIconWithTint.SecondaryIcon">
+        <item name="tint">?attr/secondary_color</item>
+    </style>
+
+    <style name="AlertDialogTheme.Icon.Secondary">
+        <item name="materialAlertDialogTitleIconStyle">@style/DialogIconWithTint.SecondaryIcon</item>
     </style>
 
     <style name="AlertDialogTheme.Icon.Delete">
         <item name="buttonBarPositiveButtonStyle">@style/DestructiveDialogButton</item>
+        <item name="buttonBarNegativeButtonStyle">@style/PlaceholderDialogButton</item>
+    </style>
+
+    <style name="AlertDialogTheme.Icon.NegativeInactive">
         <item name="buttonBarNegativeButtonStyle">@style/PlaceholderDialogButton</item>
     </style>
 
@@ -565,6 +675,26 @@
         <item name="behavior_peekHeight">@dimen/bottomSheetPeekHeight</item>
     </style>
 
+    <!-- When gesture navigation is enabled, for sheets where the content draws its own background to the bottom edge of the screen
+    and handles the navigation bar inset itself. -->
+    <style name="App.BottomSheetDialogTheme.EdgeToEdgeContent">
+        <item name="bottomSheetStyle">@style/App.BottomSheetStyle.EdgeToEdgeContent</item>
+    </style>
+
+    <style name="App.BottomSheetStyle.EdgeToEdgeContent">
+        <item name="paddingBottomSystemWindowInsets">false</item>
+    </style>
+
+    <!-- For sheets that should stop below the status bar when fully expanded, instead of extending behind it. -->
+    <style name="App.BottomSheetDialogTheme.BelowStatusBar">
+        <item name="bottomSheetStyle">@style/App.BottomSheetStyle.BelowStatusBar</item>
+    </style>
+
+    <style name="App.BottomSheetStyle.BelowStatusBar">
+        <item name="paddingTopSystemWindowInsets">false</item>
+        <item name="marginTopSystemWindowInsets">true</item>
+    </style>
+
     <style name="FloatingActionButtonRounded">
         <item name="cornerFamily">rounded</item>
         <item name="cornerSize">50%</item>
@@ -580,4 +710,19 @@
         <item name="strokeColor">?attr/paper_color</item>
     </style>
 
+    <style name="OutlinedButton" parent="Widget.Material3.Button.OutlinedButton">
+        <item name="strokeWidth">1dp</item>
+        <item name="strokeColor">?attr/paper_color</item>
+    </style>
+
+    <style name="MaterialDatePickerStyle" parent="ThemeOverlay.Material3.MaterialCalendar">
+        <item name="android:textViewStyle">@android:style/Widget.TextView</item>
+        <item name="colorOnSurface">?attr/primary_color</item>
+        <item name="colorOnSurfaceVariant">?attr/primary_color</item>
+    </style>
+
+    <style name="CircularImageView">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSize">50%</item>
+    </style>
 </resources>

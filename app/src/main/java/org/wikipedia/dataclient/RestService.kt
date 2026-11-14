@@ -1,129 +1,96 @@
 package org.wikipedia.dataclient
 
-import io.reactivex.rxjava3.core.Observable
+import okhttp3.ResponseBody
 import org.wikipedia.dataclient.okhttp.OfflineCacheInterceptor
 import org.wikipedia.dataclient.page.PageSummary
 import org.wikipedia.dataclient.page.TalkPage
 import org.wikipedia.dataclient.restbase.Metrics
+import org.wikipedia.dataclient.restbase.PageViews
+import org.wikipedia.dataclient.restbase.PreviewRequest
 import org.wikipedia.dataclient.restbase.RbDefinition
+import org.wikipedia.dataclient.restbase.TopPageViews
+import org.wikipedia.dataclient.restbase.UserEdits
 import org.wikipedia.feed.aggregated.AggregatedFeedContent
-import org.wikipedia.feed.announcement.AnnouncementList
-import org.wikipedia.feed.configure.FeedAvailability
 import org.wikipedia.feed.onthisday.OnThisDay
 import org.wikipedia.gallery.MediaList
 import org.wikipedia.readinglist.sync.SyncedReadingLists
-import org.wikipedia.readinglist.sync.SyncedReadingLists.*
-import org.wikipedia.suggestededits.provider.SuggestedEditItem
+import org.wikipedia.readinglist.sync.SyncedReadingLists.RemoteIdResponse
+import org.wikipedia.readinglist.sync.SyncedReadingLists.RemoteIdResponseBatch
+import org.wikipedia.readinglist.sync.SyncedReadingLists.RemoteReadingList
+import org.wikipedia.readinglist.sync.SyncedReadingLists.RemoteReadingListEntry
+import org.wikipedia.readinglist.sync.SyncedReadingLists.RemoteReadingListEntryBatch
+import org.wikipedia.settings.RemoteConfig
 import retrofit2.Call
 import retrofit2.Response
-import retrofit2.http.*
+import retrofit2.http.Body
+import retrofit2.http.DELETE
+import retrofit2.http.GET
+import retrofit2.http.Header
+import retrofit2.http.Headers
+import retrofit2.http.POST
+import retrofit2.http.PUT
+import retrofit2.http.Path
+import retrofit2.http.Query
 
 interface RestService {
-
-    /**
-     * Gets a page summary for a given title -- for link previews
-     *
-     * @param title the page title to be used including prefix
-     */
-    @Headers("x-analytics: preview=1", "Accept: $ACCEPT_HEADER_SUMMARY")
-    @GET("page/summary/{title}")
-    fun getSummaryResponse(
-        @Path("title") title: String,
-        @Header("Referer") referrerUrl: String?,
-        @Header("Cache-Control") cacheControl: String?,
-        @Header(OfflineCacheInterceptor.SAVE_HEADER) saveHeader: String?,
-        @Header(OfflineCacheInterceptor.LANG_HEADER) langHeader: String?,
-        @Header(OfflineCacheInterceptor.TITLE_HEADER) titleHeader: String?
-    ): Observable<Response<PageSummary>>
-
-    @Headers("x-analytics: preview=1", "Accept: $ACCEPT_HEADER_SUMMARY")
-    @GET("page/summary/{title}")
-    suspend fun getSummaryResponseSuspend(
-        @Path("title") title: String,
-        @Header("Referer") referrerUrl: String?,
-        @Header("Cache-Control") cacheControl: String?,
-        @Header(OfflineCacheInterceptor.SAVE_HEADER) saveHeader: String?,
-        @Header(OfflineCacheInterceptor.LANG_HEADER) langHeader: String?,
-        @Header(OfflineCacheInterceptor.TITLE_HEADER) titleHeader: String?
-    ): Response<PageSummary>
-
-    @Headers("x-analytics: preview=1", "Accept: $ACCEPT_HEADER_SUMMARY")
-    @GET("page/summary/{title}")
-    fun getSummary(
-        @Header("Referer") referrerUrl: String?,
-        @Path("title") title: String
-    ): Observable<PageSummary>
 
     @Headers("x-analytics: preview=1", "Accept: $ACCEPT_HEADER_SUMMARY")
     @GET("page/summary/{title}")
     suspend fun getPageSummary(
-        @Header("Referer") referrerUrl: String?,
-        @Path("title") title: String
+        @Path("title") title: String,
+        @Header("Referer") referrerUrl: String? = null,
+        @Header("Cache-Control") cacheControl: String? = null,
+        @Header(OfflineCacheInterceptor.SAVE_HEADER) saveHeader: String? = null,
+        @Header(OfflineCacheInterceptor.LANG_HEADER) langHeader: String? = null,
+        @Header(OfflineCacheInterceptor.TITLE_HEADER) titleHeader: String? = null
     ): PageSummary
 
-    // todo: this Content Service-only endpoint is under page/ but that implementation detail should
-    //       probably not be reflected here. Move to WordDefinitionClient
-    /**
-     * Gets selected Wiktionary content for a given title derived from user-selected text
-     *
-     * @param title the Wiktionary page title derived from user-selected Wikipedia article text
-     */
+    @Headers("x-analytics: preview=1", "Accept: $ACCEPT_HEADER_SUMMARY")
+    @GET("page/summary/{title}")
+    suspend fun getSummaryResponse(
+        @Path("title") title: String,
+        @Header("Referer") referrerUrl: String? = null,
+        @Header("Cache-Control") cacheControl: String? = null,
+        @Header(OfflineCacheInterceptor.SAVE_HEADER) saveHeader: String? = null,
+        @Header(OfflineCacheInterceptor.LANG_HEADER) langHeader: String? = null,
+        @Header(OfflineCacheInterceptor.TITLE_HEADER) titleHeader: String? = null
+    ): Response<PageSummary>
+
     @Headers("Accept: $ACCEPT_HEADER_DEFINITION")
     @GET("page/definition/{title}")
-    fun getDefinition(@Path("title") title: String): Observable<Map<String, List<RbDefinition.Usage>>>
+    suspend fun getDefinition(@Path("title") title: String): Map<String, List<RbDefinition.Usage>>
 
-    @get:GET("page/random/summary")
-    @get:Headers("Accept: $ACCEPT_HEADER_SUMMARY")
-    val randomSummary: Observable<PageSummary>
+    @GET("page/random/summary")
+    @Headers("Accept: $ACCEPT_HEADER_SUMMARY")
+    suspend fun getRandomSummary(): PageSummary
 
-    @GET("page/media-list/{title}/{revision}")
-    fun getMediaList(
+    @GET("page/media-list/{title}")
+    suspend fun getMediaList(
         @Path("title") title: String,
-        @Path("revision") revision: Long
-    ): Observable<MediaList>
+        @Header("Cache-Control") cacheControl: String? = null,
+        @Header(OfflineCacheInterceptor.SAVE_HEADER) saveHeader: String? = null,
+        @Header(OfflineCacheInterceptor.LANG_HEADER) langHeader: String? = null,
+        @Header(OfflineCacheInterceptor.TITLE_HEADER) titleHeader: String? = null
+    ): MediaList
 
     @GET("page/media-list/{title}/{revision}")
-    suspend fun getMediaListSuspend(
+    suspend fun getMediaList(
         @Path("title") title: String,
         @Path("revision") revision: Long
     ): MediaList
 
-    @GET("page/media-list/{title}/{revision}")
-    fun getMediaListResponse(
-        @Path("title") title: String?,
-        @Path("revision") revision: Long,
-        @Header("Cache-Control") cacheControl: String?,
-        @Header(OfflineCacheInterceptor.SAVE_HEADER) saveHeader: String?,
-        @Header(OfflineCacheInterceptor.LANG_HEADER) langHeader: String?,
-        @Header(OfflineCacheInterceptor.TITLE_HEADER) titleHeader: String?
-    ): Observable<Response<MediaList>>
-
     @GET("feed/onthisday/events/{mm}/{dd}")
-    fun getOnThisDay(@Path("mm") month: Int, @Path("dd") day: Int): Observable<OnThisDay>
-
-    // TODO: Remove this before next fundraising campaign in 2024
-    @get:GET("feed/announcements")
-    @get:Headers("Accept: " + ACCEPT_HEADER_PREFIX + "announcements/0.1.0\"")
-    val announcements: Observable<AnnouncementList>
-
-    @Headers("Accept: " + ACCEPT_HEADER_PREFIX + "aggregated-feed/0.5.0\"")
-    @GET("feed/featured/{year}/{month}/{day}")
-    fun getAggregatedFeed(
-        @Path("year") year: String?,
-        @Path("month") month: String?,
-        @Path("day") day: String?
-    ): Observable<AggregatedFeedContent>
+    suspend fun getOnThisDay(@Path("mm") month: Int,
+                             @Path("dd") day: Int): OnThisDay
 
     @Headers("Accept: " + ACCEPT_HEADER_PREFIX + "aggregated-feed/0.5.0\"")
     @GET("feed/featured/{year}/{month}/{day}")
     suspend fun getFeedFeatured(
         @Path("year") year: String?,
         @Path("month") month: String?,
-        @Path("day") day: String?
+        @Path("day") day: String?,
+        @Query("lang") lang: String?
     ): AggregatedFeedContent
-
-    @get:GET("feed/availability")
-    val feedAvailability: Observable<FeedAvailability>
 
     // ------- Reading lists -------
     @POST("data/lists/setup")
@@ -199,33 +166,10 @@ interface RestService {
         @Query("csrf_token") token: String?
     ): Call<Unit>
 
-    // ------- Recommendations -------
-    @Headers("Cache-Control: no-cache")
-    @GET("data/recommendation/caption/addition/{lang}")
-    fun getImagesWithoutCaptions(@Path("lang") lang: String): Observable<List<SuggestedEditItem>>
-
-    @Headers("Cache-Control: no-cache")
-    @GET("data/recommendation/caption/translation/from/{fromLang}/to/{toLang}")
-    fun getImagesWithTranslatableCaptions(
-        @Path("fromLang") fromLang: String,
-        @Path("toLang") toLang: String
-    ): Observable<List<SuggestedEditItem>>
-
-    @Headers("Cache-Control: no-cache")
-    @GET("data/recommendation/description/addition/{lang}")
-    fun getArticlesWithoutDescriptions(@Path("lang") lang: String): Observable<List<SuggestedEditItem>>
-
-    @Headers("Cache-Control: no-cache")
-    @GET("data/recommendation/description/translation/from/{fromLang}/to/{toLang}")
-    fun getArticlesWithTranslatableDescriptions(
-        @Path("fromLang") fromLang: String,
-        @Path("toLang") toLang: String
-    ): Observable<List<SuggestedEditItem>>
-
     //  ------- Talk pages -------
     @Headers("Cache-Control: no-cache")
     @GET("page/talk/{title}")
-    fun getTalkPage(@Path("title") title: String?): Observable<TalkPage>
+    suspend fun getTalkPage(@Path("title") title: String?): TalkPage
 
     @Headers("Cache-Control: no-cache")
     @GET("metrics/edits/per-page/{wikiAuthority}/{title}/all-editor-types/monthly/{fromDate}/{toDate}")
@@ -235,6 +179,58 @@ interface RestService {
         @Path("fromDate") fromDate: String,
         @Path("toDate") toDate: String
     ): Metrics
+
+    @GET("metrics/edits/v3/per_editor/{globalUserId}/all_page_types/monthly/{fromDate}/{toDate}")
+    suspend fun getEditsPerGlobalUserMonthly(
+        @Path("globalUserId") globalUserId: Int,
+        @Path("fromDate") fromDate: String,
+        @Path("toDate") toDate: String
+    ): UserEdits
+
+    @GET("metrics/edits/v3/per_editor/{globalUserId}/all_page_types/daily/{fromDate}/{toDate}")
+    suspend fun getEditsPerGlobalUserDaily(
+        @Path("globalUserId") globalUserId: Int,
+        @Path("fromDate") fromDate: String,
+        @Path("toDate") toDate: String
+    ): UserEdits
+
+    @GET("metrics/pageviews/v3/per_editor/{globalUserId}/daily/{fromDate}/{toDate}")
+    suspend fun getPageViewsForEditedPagesDaily(
+        @Path("globalUserId") globalUserId: Int,
+        @Path("fromDate") fromDate: String,
+        @Path("toDate") toDate: String
+    ): PageViews
+
+    @GET("metrics/pageviews/v3/per_editor/{globalUserId}/monthly/{fromDate}/{toDate}")
+    suspend fun getPageViewsForEditedPagesMonthly(
+        @Path("globalUserId") globalUserId: Int,
+        @Path("fromDate") fromDate: String,
+        @Path("toDate") toDate: String
+    ): PageViews
+
+    @GET("metrics/pageviews/v3/top_pages_per_editor/{globalUserId}/monthly/{fromDate}/{toDate}")
+    suspend fun getMostViewedEditedPagesMonthly(
+        @Path("globalUserId") globalUserId: Int,
+        @Path("fromDate") fromDate: String,
+        @Path("toDate") toDate: String
+    ): PageViews
+
+    @GET("metrics/pageviews/top/{project}/all-access/{year}/{month}/{day}")
+    suspend fun getTopPageViews(
+        @Path("project") project: String,
+        @Path("year") year: String,
+        @Path("month") month: String,
+        @Path("day") day: String
+    ): TopPageViews
+
+    @POST("transform/wikitext/to/mobile-html/{title}")
+    suspend fun getHtmlPreviewFromWikitext(
+        @Path("title") title: String,
+        @Body body: PreviewRequest
+    ): ResponseBody
+
+    @GET("feed/configuration")
+    suspend fun getConfiguration(): RemoteConfig.RemoteConfigImpl
 
     companion object {
         const val REST_API_PREFIX = "/api/rest_v1"

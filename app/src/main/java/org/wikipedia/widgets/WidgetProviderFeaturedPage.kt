@@ -15,20 +15,17 @@ import androidx.work.BackoffPolicy
 import androidx.work.OneTimeWorkRequest
 import androidx.work.WorkManager
 import androidx.work.WorkRequest
-import com.bumptech.glide.Glide
-import com.bumptech.glide.load.resource.bitmap.CenterCrop
-import com.bumptech.glide.load.resource.bitmap.DownsampleStrategy
-import com.bumptech.glide.load.resource.bitmap.RoundedCorners
-import com.bumptech.glide.request.target.AppWidgetTarget
 import org.wikipedia.Constants
 import org.wikipedia.R
 import org.wikipedia.WikipediaApp
+import org.wikipedia.dataclient.Service
 import org.wikipedia.history.HistoryEntry
 import org.wikipedia.page.PageActivity
 import org.wikipedia.page.PageTitle
-import org.wikipedia.util.DimenUtil
+import org.wikipedia.util.ImageUrlUtil
 import org.wikipedia.util.StringUtil
 import org.wikipedia.util.log.L
+import org.wikipedia.views.imageservice.ImageService
 import java.util.concurrent.TimeUnit
 
 class WidgetProviderFeaturedPage : AppWidgetProvider() {
@@ -70,13 +67,11 @@ class WidgetProviderFeaturedPage : AppWidgetProvider() {
             if (pageTitle.thumbUrl.isNullOrEmpty()) {
                 remoteViews.setViewVisibility(R.id.widget_content_thumbnail, View.GONE)
             } else {
-                Glide.with(context).asBitmap()
-                    .load(pageTitle.thumbUrl)
-                    .override(256)
-                    .downsample(DownsampleStrategy.CENTER_INSIDE)
-                    .transform(CenterCrop(), RoundedCorners(DimenUtil.roundedDpToPx(16f)))
-                    .into(AppWidgetTarget(context, R.id.widget_content_thumbnail, remoteViews, widgetId))
-
+                ImageService.loadImage(context, ImageUrlUtil.getUrlForPreferredSize(pageTitle.thumbUrl!!,
+                    Service.PREFERRED_THUMB_SIZE), onSuccess = { bitmap ->
+                    remoteViews.setImageViewBitmap(R.id.widget_content_thumbnail, bitmap)
+                    appWidgetManager.updateAppWidget(widgetId, remoteViews)
+                })
                 remoteViews.setViewVisibility(R.id.widget_content_thumbnail, View.VISIBLE)
             }
 
@@ -84,6 +79,7 @@ class WidgetProviderFeaturedPage : AppWidgetProvider() {
             val pendingIntent = PendingIntentCompat.getActivity(context, 1,
                 PageActivity.newIntentForNewTab(context, historyEntry, historyEntry.title)
                     .putExtra(Constants.INTENT_EXTRA_INVOKE_SOURCE, Constants.InvokeSource.WIDGET)
+                    .putExtra(Constants.INTENT_WIDGET_TYPE, WidgetTypes.FEATURED_ARTICLE.value)
                     .setFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
                     PendingIntent.FLAG_UPDATE_CURRENT, false)
 
@@ -95,8 +91,8 @@ class WidgetProviderFeaturedPage : AppWidgetProvider() {
     companion object {
         private var lastServerUpdateMillis = 0L
 
-        fun forceUpdateWidget(context: Context, pageTitle: PageTitle? = null, sendIntent: Boolean = true) {
-            val appWidgetManager = AppWidgetManager.getInstance(context.applicationContext)
+        fun forceUpdateWidget(context: Context, pageTitle: PageTitle? = null) {
+            val appWidgetManager = AppWidgetManager.getInstance(context.applicationContext) ?: return
             val ids = appWidgetManager.getAppWidgetIds(ComponentName(context.applicationContext, WidgetProviderFeaturedPage::class.java))
             ids.forEach { id ->
                 val options = appWidgetManager.getAppWidgetOptions(id)
@@ -105,7 +101,7 @@ class WidgetProviderFeaturedPage : AppWidgetProvider() {
                 options.putParcelable(Constants.ARG_TITLE, bundle)
                 appWidgetManager.updateAppWidgetOptions(id, options)
             }
-            if (ids.isNotEmpty() && sendIntent) {
+            if (ids.isNotEmpty()) {
                 context.sendBroadcast(Intent(context, WidgetProviderFeaturedPage::class.java)
                     .setAction(AppWidgetManager.ACTION_APPWIDGET_UPDATE)
                     .putExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS, ids))

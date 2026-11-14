@@ -4,8 +4,6 @@ import android.content.Context
 import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkCapabilities
-import android.net.NetworkRequest
-import android.os.Build
 import org.wikipedia.WikipediaApp
 import org.wikipedia.analytics.eventplatform.EventPlatformClient
 import org.wikipedia.savedpages.SavedPageSyncService
@@ -48,12 +46,12 @@ class ConnectionStateMonitor : ConnectivityManager.NetworkCallback() {
 
     override fun onAvailable(network: Network) {
         super.onAvailable(network)
-        updateOnlineState()
+        updateOnlineState(true)
     }
 
     override fun onLost(network: Network) {
         super.onLost(network)
-        updateOnlineState()
+        updateOnlineState(false)
     }
 
     private fun ensureNetworkCallbackRegistered() {
@@ -62,16 +60,7 @@ class ConnectionStateMonitor : ConnectivityManager.NetworkCallback() {
         }
         try {
             val connectivityManager = WikipediaApp.instance.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-                connectivityManager.registerDefaultNetworkCallback(this)
-            } else {
-                connectivityManager.registerNetworkCallback(
-                    NetworkRequest.Builder()
-                        .addTransportType(NetworkCapabilities.TRANSPORT_CELLULAR)
-                        .addTransportType(NetworkCapabilities.TRANSPORT_WIFI)
-                        .build(), this
-                )
-            }
+            connectivityManager.registerDefaultNetworkCallback(this)
             networkCallbackRegistered = true
         } catch (e: Exception) {
             // Framework bug, will only be fixed in Android S:
@@ -79,19 +68,21 @@ class ConnectionStateMonitor : ConnectivityManager.NetworkCallback() {
         }
     }
 
-    private fun updateOnlineState() {
-        val connectivityManager = WikipediaApp.instance.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
-        online = try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                connectivityManager.getNetworkCapabilities(connectivityManager.activeNetwork)?.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) == true
-            } else {
-                connectivityManager.activeNetworkInfo?.isConnected == true
+    private fun updateOnlineState(state: Boolean? = null) {
+        if (state != null) {
+            online = state
+            lastCheckedMillis = System.currentTimeMillis()
+        } else {
+            val connectivityManager = WikipediaApp.instance.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+            online = try {
+                connectivityManager.getNetworkCapabilities(connectivityManager.activeNetwork)
+                    ?.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) == true
+            } catch (e: Exception) {
+                // Framework bug, will only be fixed in Android S:
+                // https://issuetracker.google.com/issues/175055271
+                // Assume we're online, until the next call to update the state, which will happen shortly.
+                true
             }
-        } catch (e: Exception) {
-            // Framework bug, will only be fixed in Android S:
-            // https://issuetracker.google.com/issues/175055271
-            // Assume we're online, until the next call to update the state, which will happen shortly.
-            true
         }
 
         EventPlatformClient.setEnabled(online)

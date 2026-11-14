@@ -2,7 +2,6 @@ package org.wikipedia.settings.languages
 
 import android.annotation.SuppressLint
 import android.content.Context
-import android.os.Build
 import android.util.AttributeSet
 import android.view.LayoutInflater
 import android.view.ViewGroup
@@ -11,9 +10,9 @@ import androidx.appcompat.content.res.AppCompatResources
 import org.wikipedia.R
 import org.wikipedia.databinding.ItemWikipediaLanguageBinding
 import org.wikipedia.util.DeviceUtil
+import org.wikipedia.util.DimenUtil
 import org.wikipedia.util.ResourceUtil
 import org.wikipedia.util.StringUtil
-import java.util.*
 
 class WikipediaLanguagesItemView : LinearLayout {
     interface Callback {
@@ -32,11 +31,10 @@ class WikipediaLanguagesItemView : LinearLayout {
     init {
         layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT)
+        minimumHeight = DimenUtil.roundedDpToPx(DimenUtil.getDimension(R.dimen.list_item_default_height))
         setBackgroundColor(ResourceUtil.getThemedColor(context, R.attr.paper_color))
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            foreground = AppCompatResources.getDrawable(context,
-                ResourceUtil.getThemedAttributeId(context, androidx.appcompat.R.attr.selectableItemBackground))
-        }
+        foreground = AppCompatResources.getDrawable(context,
+            ResourceUtil.getThemedAttributeId(context, androidx.appcompat.R.attr.selectableItemBackground))
         binding.wikiLanguageCheckbox.setOnCheckedChangeListener { _, _ ->
             callback?.onCheckedChanged(position)
             updateBackgroundColor()
@@ -57,6 +55,7 @@ class WikipediaLanguagesItemView : LinearLayout {
         this.position = position
         binding.wikiLanguageOrder.text = (position + 1).toString()
         binding.wikiLanguageTitle.text = StringUtil.capitalize(languageLocalizedName.orEmpty())
+        binding.wikiLanguageTitle.forceLayout()
         binding.wikiLanguageCode.setLangCode(langCode)
     }
 

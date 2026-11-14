@@ -7,6 +7,7 @@ import android.view.View
 import android.widget.TextView
 import androidx.annotation.ColorInt
 import androidx.constraintlayout.widget.ConstraintLayout
+import androidx.core.view.isNotEmpty
 import com.google.android.material.tabs.TabLayout
 import com.google.android.material.tabs.TabLayout.OnTabSelectedListener
 import org.wikipedia.R
@@ -24,6 +25,7 @@ class LanguageScrollView(context: Context, attrs: AttributeSet? = null) : Constr
     private val binding = ViewLanguageScrollBinding.inflate(LayoutInflater.from(context), this)
     private var callback: Callback? = null
     private var languageCodes: List<String> = mutableListOf()
+    private var allowSelect = false
     val selectedPosition: Int
         get() = binding.horizontalScrollLanguages.selectedTabPosition
 
@@ -55,7 +57,9 @@ class LanguageScrollView(context: Context, attrs: AttributeSet? = null) : Constr
                 updateTabLanguageCode(it, textColor = paperColor, backgroundColorTint = color, fillBackground = true)
                 updateTabLanguageLabel(it, textColor = color)
             }
-            callback?.onLanguageTabSelected(languageCodes[tab.position])
+            if (allowSelect) {
+                callback?.onLanguageTabSelected(languageCodes[tab.position])
+            }
         } else {
             view?.let {
                 @ColorInt val color = ResourceUtil.getThemedColor(context, R.attr.placeholder_color)
@@ -68,21 +72,20 @@ class LanguageScrollView(context: Context, attrs: AttributeSet? = null) : Constr
     fun setUpLanguageScrollTabData(languageCodes: List<String>, position: Int, callback: Callback?) {
         this.callback = callback
         this.languageCodes = languageCodes
-        if (binding.horizontalScrollLanguages.childCount > 0) {
+        allowSelect = false
+        if (binding.horizontalScrollLanguages.isNotEmpty()) {
             binding.horizontalScrollLanguages.removeAllTabs()
         }
         languageCodes.forEach {
             val tab = binding.horizontalScrollLanguages.newTab()
             tab.customView = createLanguageTab(it)
             binding.horizontalScrollLanguages.addTab(tab)
-            updateTabView(false, tab)
+            updateTabView(tab.isSelected, tab)
         }
-        binding.horizontalScrollLanguages.getTabAt(position)?.let {
-            binding.horizontalScrollLanguages.post {
-                if (!isAttachedToWindow) {
-                    return@post
-                }
-                binding.horizontalScrollLanguages.getTabAt(position)!!.select()
+        allowSelect = true
+        binding.horizontalScrollLanguages.post {
+            if (isAttachedToWindow) {
+                binding.horizontalScrollLanguages.getTabAt(position)?.select()
             }
         }
     }
@@ -97,7 +100,7 @@ class LanguageScrollView(context: Context, attrs: AttributeSet? = null) : Constr
     private fun updateTabLanguageLabel(customView: View, languageCode: String? = null, @ColorInt textColor: Int? = null) {
         val languageLabelTextView = customView.findViewById<TextView>(R.id.language_label)
         if (!languageCode.isNullOrEmpty()) {
-            languageLabelTextView.text = WikipediaApp.instance.languageState.getAppLanguageCanonicalName(languageCode)
+            languageLabelTextView.text = WikipediaApp.instance.languageState.getAppLanguageLocalizedName(languageCode)
         }
         textColor?.let {
             languageLabelTextView.setTextColor(textColor)

@@ -27,7 +27,7 @@
   <string name="page_error_back_to_main">Esẽ</string>
   <string name="error_back">Esẽ</string>
   <string name="error_next">Rire</string>
-  <string name="menu_clear_all_history">Embogue tembiasakue</string>
+  <string name="menu_clear_all_history" fuzzy="true">Embogue tembiasakue</string>
   <string name="history_item_deleted">%s ojeipe\'a tembiasakuégui</string>
   <string name="history_items_deleted">%d kuatia ojeipe\'a tembiasakuégui</string>
   <string name="history_item_delete_undo">Emboguevi</string>
@@ -40,7 +40,7 @@
   <string name="wikimedia_commons">Wikimedia Commons</string>
   <string name="wikidata">Wikidata</string>
   <string name="dialog_title_clear_history">Embogue jeheka rembiasakue</string>
-  <string name="dialog_message_clear_history">Kóva omboguepáta ne kundaha rembiasakue, ha ombotýta oimeraẽva kuatia ojepe\'áva ko\'ágã. Upeichaite piko reipota?</string>
+  <string name="dialog_message_clear_history" fuzzy="true">Kóva omboguepáta ne kundaha rembiasakue, ha ombotýta oimeraẽva kuatia ojepe\'áva ko\'ágã. Upeichaite piko reipota?</string>
   <string name="dialog_message_clear_history_yes">Upéicha</string>
   <string name="dialog_message_clear_history_no">Nahániri</string>
   <string name="share_via">Eikuaauka</string>
@@ -53,7 +53,7 @@
   <string name="page_edit_history_filter_by">Embogua:</string>
   <string name="page_edit_history_filter_by_all">Opaite ñemoambue (%s)</string>
   <string name="page_edit_history_filter_by_user">Puruhára ñemoambuekuéra (%s)</string>
-  <string name="page_edit_history_filter_by_anon">Ñemoambue ijapohára rera\'ỹva (%s)</string>
+  <string name="page_edit_history_filter_by_anon" fuzzy="true">Ñemoambue ijapohára rera\'ỹva (%s)</string>
   <string name="page_edit_history_filter_by_bot">Bot ñemoambuekuéra (%s)</string>
   <string name="page_edit_history_metrics_content_description">Ojeipapa %1$s guive %2$s peve</string>
   <plurals name="page_edit_history_article_edits_since_year">
@@ -132,8 +132,8 @@
   <string name="login_username_hint">Puruhára réra</string>
   <string name="login_password_hint">Ñe\'ẽñemi</string>
   <string name="account_creation_password_hint">Ñe\'ẽñemi</string>
-  <string name="login_2fa_hint">Código de autenticación de dos factores</string>
-  <string name="login_2fa_other_workflow_error_msg">¡Se requiere autenticación de dos factores! Por favor regresa a la actividad principal e inicia sesión con tu clave de autenticación de dos factores. Luego vuelve a intentarlo.</string>
+  <string name="login_2fa_hint" fuzzy="true">Código de autenticación de dos factores</string>
+  <string name="login_2fa_other_workflow_error_msg" fuzzy="true">¡Se requiere autenticación de dos factores! Por favor regresa a la actividad principal e inicia sesión con tu clave de autenticación de dos factores. Luego vuelve a intentarlo.</string>
   <string name="onboarding_card_login">Eike</string>
   <string name="page_editing_login">Eike</string>
   <string name="reading_lists_sync_login">Eike</string>
@@ -189,8 +189,8 @@
   <string name="privacy_policy_description">Mba\'e ñemiguáva rekorã</string>
   <string name="terms_of_use_description">Ñe\'ẽme\'ẽ Jepururã</string>
   <string name="about_wikipedia_url">https://gn.wikipedia.org/wiki/Vikipetã:Rehegua</string>
-  <string name="offline_reading_and_data_url">https://www.mediawiki.org/wiki/Wikimedia_Apps/Android_FAQ/es#Offline_reading_and_data</string>
-  <string name="android_app_faq_url">https://www.mediawiki.org/wiki/Wikimedia_Apps/Android_FAQ/es</string>
+  <string name="offline_reading_and_data_url" fuzzy="true">https://www.mediawiki.org/wiki/Wikimedia_Apps/Android_FAQ/es#Offline_reading_and_data</string>
+  <string name="android_app_faq_url" fuzzy="true">https://www.mediawiki.org/wiki/Wikimedia_Apps/Android_FAQ/es</string>
   <string name="android_app_request_an_account_url">https://es.wikipedia.org/wiki/Wikipedia:Crear_una_cuenta_de_usuario</string>
   <string name="cc_by_sa_4_url">https://creativecommons.org/licenses/by-sa/4.0/deed.es</string>
   <string name="cc_0_url">https://creativecommons.org/publicdomain/zero/1.0/deed.es</string>
@@ -320,7 +320,7 @@
   <string name="image_recommendation_accept">Upéicha</string>
   <string name="image_recommendation_reject">Nahániri</string>
   <string name="image_recommendation_notsure">Ndaikuaái</string>
-  <string name="image_recommendation_reject_title">Mba\'ére piko?</string>
+  <string name="image_recommendation_reject_title" fuzzy="true">Mba\'ére piko?</string>
   <string name="image_recommendation_reject_dont_know">Ndaikuaái ko mba\'e</string>
   <string name="image_recommendation_reject_other">Ambuéva</string>
   <string name="image_recommendation_reject_submit">Emondo</string>
@@ -346,7 +346,6 @@
   </plurals>
   <string name="more_language_options">ehechave</string>
   <string name="add_wikipedia_languages_text">Emoĩve Vikipetã ñe\'ẽ</string>
-  <string name="dialog_of_remove_chinese_variants_from_app_lang_no">Nahániri</string>
   <string name="remove_language_dialog_cancel_button_text">Eheja</string>
   <string name="remove_language_dialog_ok_button_text">Oĩma</string>
   <string name="remove_all_language_warning_dialog_ok_button_text">Oĩma</string>
@@ -398,8 +397,6 @@
   <string name="thank_dialog_text">‘Aguyje’ ha\'e mba\'e hasy\'ỹva ojehechauka hag̃ua ñemomba\'eguasu peteĩ haihára rembiapóre Vikipetãme. ‘Aguyje’ ndikatúi oñemboguevi ha opavave ikatu ohecha</string>
   <string name="thank_dialog_positive_button_text">Aguyjeǃ</string>
   <string name="thank_success_message">Reme\'ẽma \"Aguyje\" %s-pe guarã 👍</string>
-  <string name="watchlist_page_add_to_watchlist_snackbar">%1$s ha iñemongeta kuatia oike ne rembiapo ñangarekoha rysýipe %2$s.</string>
-  <string name="watchlist_page_removed_from_watchlist_snackbar">%s ha iñemongeta kuatia ojeipe\'a ne rembiapo ñangarekoha rysýigui.</string>
   <string name="watchlist_expiry_dialog_title">Eiporavo araka\'épa rehechase mba\'ekuéra ne rembiapo ñangarekoha rysýipe</string>
   <string name="watchlist_empty">Ndaipóri kuatia ne rembiapo ñangarekoha rysýipe.</string>
   <string name="watchlist_search">Eheka tembiapo ñangarekoha rysýipe</string>

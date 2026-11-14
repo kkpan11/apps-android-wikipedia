@@ -6,16 +6,13 @@ import os
 import json
 import codecs
 import requests
+from time import sleep
 from jinja2 import Environment, FileSystemLoader
-
+from constants import HEADERS as headers
 
 CHINESE_WIKI_LANG = "zh"
 SIMPLIFIED_CHINESE_LANG = "zh-hans"
 TRADITIONAL_CHINESE_LANG = "zh-hant"
-
-# T114042
-NORWEGIAN_BOKMAL_WIKI_LANG = "no"
-NORWEGIAN_BOKMAL_LANG = "nb"
 
 
 # Wikis that cause problems and hence we pretend
@@ -67,7 +64,7 @@ def list_from_sitematrix():
         '&format=json&formatversion=2&smtype=language&smstate=all'
 
     print(u"Fetching languages...")
-    data = json.loads(requests.get(QUERY_SITEMATRIX).text)
+    data = json.loads(requests.get(QUERY_SITEMATRIX, headers=headers).text)
     wikis = []
 
     for key, value in data[u"sitematrix"].items():
@@ -82,8 +79,15 @@ def list_from_sitematrix():
                 wikipedia_url = site[u"url"]
         if len(wikipedia_url) == 0:
             continue
-        wikis.append(build_wiki(value[u"code"], value[u"localname"], value[u"name"]))
 
+        # At this stage, the site code should be the subdomain of the Wikipedia URL,
+        # instead of the "code" field in the sitematrix response.
+        # site_code = value[u"code"]
+        site_code = wikipedia_url.replace('https://', '').replace('.wikipedia.org', '')
+
+        wikis.append(build_wiki(site_code, value[u"localname"], value[u"name"]))
+
+    wikis.sort(key=lambda x: x.lang)
     return wikis
 
 
@@ -96,6 +100,7 @@ def filter_supported_wikis(wikis):
 def preprocess_wikis(wikis):
     # Add TestWiki.
     wikis.append(build_wiki(lang="test", english_name="Test", local_name="Test"))
+    wikis.append(build_wiki(lang="test2", english_name="Test2", local_name="Test2"))
 
     return wikis
 
@@ -118,8 +123,9 @@ def postprocess_wikis(wiki_list):
     traditionalWiki.props["local_name"] = "繁體中文"
     wiki_list.wikis.insert(chineseWikiIndex + 2, traditionalWiki)
 
-    bokmalWiki = next((wiki for wiki in wiki_list.wikis if wiki.lang == NORWEGIAN_BOKMAL_WIKI_LANG), None)
-    bokmalWiki.lang = NORWEGIAN_BOKMAL_LANG
+    # T114042
+    bokmalWiki = next((wiki for wiki in wiki_list.wikis if wiki.lang == "no"), None)
+    bokmalWiki.lang = "nb"
 
     return wiki_list
 
@@ -130,7 +136,8 @@ def populate_aliases(wikis):
         print(u"Fetching namespace strings for %s" % wiki.lang)
         url = u"https://%s.wikipedia.org/w/api.php" % wiki.lang + \
               u"?action=query&meta=siteinfo&format=json&siprop=namespaces"
-        data = json.loads(requests.get(url).text)
+        data = json.loads(requests.get(url, headers=headers).text)
+        sleep(1)
         # according to https://www.mediawiki.org/wiki/Manual:Namespace
         # -1 seems to be the ID for Special Pages
         wiki.props[u"special_alias"] = data[u"query"][u"namespaces"][u"-1"][u"*"]
@@ -151,11 +158,14 @@ def populate_main_pages(wikis):
         print(u"Fetching Main Page for %s" % wiki.lang)
         url = u"https://%s.wikipedia.org/w/api.php" % wiki.lang + \
               u"?action=query&meta=siteinfo&format=json&siprop=general|specialpagealiases"
-        data = json.loads(requests.get(url).text)
+        data = json.loads(requests.get(url, headers=headers).text)
+        sleep(1)
         wiki.props[u"main_page_name"] = data[u"query"][u"general"][u"mainpage"]
         for specialPage in data[u"query"][u"specialpagealiases"]:
             if specialPage[u"realname"] == "Contributions":
-                wiki.props[u"contribs_page_name"] = specialPage[u"aliases"][0]
+                wiki.props[u"contribs_page_name"] = next(
+                    (alias for alias in specialPage[u"aliases"] if alias not in ("Contributions", "Contribs")),
+                    "Contributions")
     return wikis
 
 

@@ -9,32 +9,45 @@ import android.view.ViewGroup
 import android.webkit.WebView
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.lifecycleScope
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import kotlinx.coroutines.CoroutineExceptionHandler
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.wikipedia.R
 import org.wikipedia.activity.FragmentUtil
 import org.wikipedia.bridge.CommunicationBridge
 import org.wikipedia.bridge.CommunicationBridge.CommunicationBridgeListener
 import org.wikipedia.bridge.JavaScriptActionHandler
 import org.wikipedia.databinding.FragmentPreviewEditBinding
-import org.wikipedia.dataclient.RestService
 import org.wikipedia.dataclient.ServiceFactory
 import org.wikipedia.dataclient.WikiSite
 import org.wikipedia.dataclient.okhttp.OkHttpWebViewClient
+import org.wikipedia.dataclient.restbase.PreviewRequest
+import org.wikipedia.diff.ArticleEditDetailsActivity
 import org.wikipedia.history.HistoryEntry
 import org.wikipedia.json.JsonUtil
-import org.wikipedia.page.*
+import org.wikipedia.page.ExclusiveBottomSheetPresenter
+import org.wikipedia.page.LinkHandler
+import org.wikipedia.page.PageActivity
+import org.wikipedia.page.PageTitle
+import org.wikipedia.page.PageViewModel
 import org.wikipedia.page.references.PageReferences
 import org.wikipedia.page.references.ReferenceDialog
+import org.wikipedia.staticdata.MainPageNameData
 import org.wikipedia.util.DeviceUtil
 import org.wikipedia.util.DimenUtil
 import org.wikipedia.util.ResourceUtil
 import org.wikipedia.util.UriUtil
+import org.wikipedia.util.log.L
 
 class EditPreviewFragment : Fragment(), CommunicationBridgeListener, ReferenceDialog.Callback {
 
     interface Callback {
         fun getParentPageTitle(): PageTitle
         fun showProgressBar(visible: Boolean)
+        fun isNewPage(): Boolean
     }
 
     private var _binding: FragmentPreviewEditBinding? = null
@@ -51,6 +64,7 @@ class EditPreviewFragment : Fragment(), CommunicationBridgeListener, ReferenceDi
     override val toolbarMargin = 0
     override val referencesGroup get() = references.referencesGroup
     override val selectedReferenceIndex get() = references.selectedIndex
+    override val messageCardHeight: Float = 0f
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         _binding = FragmentPreviewEditBinding.inflate(layoutInflater, container, false)
@@ -75,10 +89,26 @@ class EditPreviewFragment : Fragment(), CommunicationBridgeListener, ReferenceDi
     fun showPreview(title: PageTitle, wikiText: String) {
         DeviceUtil.hideSoftKeyboard(requireActivity())
         callback().showProgressBar(true)
-        val url = ServiceFactory.getRestBasePath(model.title!!.wikiSite) +
-                RestService.PAGE_HTML_PREVIEW_ENDPOINT + UriUtil.encodeURL(title.prefixedText)
-        val postData = "wikitext=" + UriUtil.encodeURL(wikiText)
-        binding.editPreviewWebview.postUrl(url, postData.toByteArray())
+        lifecycleScope.launch(CoroutineExceptionHandler { _, t ->
+            showPreview(t.message)
+            L.e(t)
+        }) {
+            var html: String?
+            withContext(Dispatchers.IO) {
+                // Workaround for T363781
+                // The preview endpoint requires the target page to exist, so if it doesn't exist yet,
+                // we will base the preview on the Main Page of the wiki.
+                val previewTitle = if (callback().isNewPage()) MainPageNameData.valueFor(title.wikiSite.languageCode) else title.prefixedText
+                ServiceFactory.getRest(model.title!!.wikiSite).getHtmlPreviewFromWikitext(previewTitle, PreviewRequest(wikiText)).use {
+                    html = it.string()
+                }
+            }
+            showPreview(html)
+        }
+    }
+
+    private fun showPreview(html: String?) {
+        binding.editPreviewWebview.loadDataWithBaseURL(ServiceFactory.getRestBasePath(model.title!!.wikiSite), html.orEmpty(), "text/html", "UTF-8", null)
         binding.editPreviewContainer.isVisible = true
         requireActivity().invalidateOptionsMenu()
     }
@@ -97,7 +127,7 @@ class EditPreviewFragment : Fragment(), CommunicationBridgeListener, ReferenceDi
                     return
                 }
                 bridge.onMetadataReady()
-                bridge.execute(JavaScriptActionHandler.setMargins(16, 0, 16, 16 + DimenUtil.roundedPxToDp(binding.licenseText.height.toFloat())))
+                bridge.execute(JavaScriptActionHandler.setMargins(0, 16 + DimenUtil.roundedPxToDp(binding.licenseText.height.toFloat())))
                 callback().showProgressBar(false)
                 requireActivity().invalidateOptionsMenu()
             }
@@ -150,7 +180,7 @@ class EditPreviewFragment : Fragment(), CommunicationBridgeListener, ReferenceDi
         }
 
         override fun onInternalLinkClicked(title: PageTitle) {
-            showLeavingEditDialogue {
+            showLeavingEditDialog {
                 startActivity(
                     PageActivity.newIntentForCurrentTab(
                         context,
@@ -161,7 +191,7 @@ class EditPreviewFragment : Fragment(), CommunicationBridgeListener, ReferenceDi
         }
 
         override fun onExternalLinkClicked(uri: Uri) {
-            showLeavingEditDialogue { UriUtil.handleExternalLink(context, uri) }
+            showLeavingEditDialog { UriUtil.handleExternalLink(context, uri) }
         }
 
         override fun onMediaLinkClicked(title: PageTitle) {
@@ -169,7 +199,9 @@ class EditPreviewFragment : Fragment(), CommunicationBridgeListener, ReferenceDi
         }
 
         override fun onDiffLinkClicked(title: PageTitle, revisionId: Long) {
-            // ignore
+            showLeavingEditDialog {
+                startActivity(ArticleEditDetailsActivity.newIntent(requireContext(), title, revisionId))
+            }
         }
 
         /**
@@ -178,7 +210,7 @@ class EditPreviewFragment : Fragment(), CommunicationBridgeListener, ReferenceDi
          *
          * @param runnable The runnable that is run if the user chooses to leave.
          */
-        private fun showLeavingEditDialogue(runnable: Runnable) {
+        private fun showLeavingEditDialog(runnable: Runnable) {
             // Ask the user if they really meant to leave the edit workflow
             MaterialAlertDialogBuilder(requireActivity())
                 .setMessage(R.string.dialog_message_leaving_edit)

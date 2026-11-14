@@ -1,31 +1,33 @@
 package org.wikipedia
 
-import android.annotation.SuppressLint
 import android.app.Application
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Handler
+import android.os.Process
+import android.os.UserManager
 import android.speech.RecognizerIntent
-import android.view.Window
 import android.webkit.WebView
 import androidx.appcompat.app.AppCompatDelegate
-import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers
-import io.reactivex.rxjava3.internal.functions.Functions
-import io.reactivex.rxjava3.plugins.RxJavaPlugins
-import io.reactivex.rxjava3.schedulers.Schedulers
-import org.wikipedia.analytics.InstallReferrerListener
+import kotlinx.coroutines.CoroutineExceptionHandler
+import kotlinx.coroutines.MainScope
+import kotlinx.coroutines.launch
 import org.wikipedia.analytics.eventplatform.AppSessionEvent
+import org.wikipedia.analytics.eventplatform.ClientErrorEvent
 import org.wikipedia.analytics.eventplatform.EventPlatformClient
 import org.wikipedia.appshortcuts.AppShortcuts
 import org.wikipedia.auth.AccountUtil
-import org.wikipedia.concurrency.RxBus
+import org.wikipedia.concurrency.FlowEventBus
 import org.wikipedia.connectivity.ConnectionStateMonitor
+import org.wikipedia.database.AppDatabase
 import org.wikipedia.dataclient.ServiceFactory
 import org.wikipedia.dataclient.SharedPreferenceCookieManager
 import org.wikipedia.dataclient.WikiSite
 import org.wikipedia.events.ChangeTextSizeEvent
+import org.wikipedia.events.LoggedOutEvent
 import org.wikipedia.events.ThemeFontChangeEvent
+import org.wikipedia.installreferrer.InstallReferrerListener
 import org.wikipedia.language.AcceptLanguageUtil
 import org.wikipedia.language.AppLanguageState
 import org.wikipedia.notifications.NotificationCategory
@@ -33,12 +35,14 @@ import org.wikipedia.notifications.NotificationPollBroadcastReceiver
 import org.wikipedia.page.tabs.Tab
 import org.wikipedia.push.WikipediaFirebaseMessagingService
 import org.wikipedia.settings.Prefs
-import org.wikipedia.settings.SiteInfoClient
 import org.wikipedia.theme.Theme
 import org.wikipedia.util.DimenUtil
 import org.wikipedia.util.ReleaseUtil
 import org.wikipedia.util.log.L
-import java.util.*
+import org.wikipedia.views.imageservice.CoilImageServiceLoader
+import org.wikipedia.views.imageservice.ImageService
+import org.wikipedia.yearinreview.data.PrefsYearInReviewStore
+import java.util.UUID
 
 class WikipediaApp : Application() {
     init {
@@ -66,26 +70,19 @@ class WikipediaApp : Application() {
     private var defaultWikiSite: WikiSite? = null
 
     val connectionStateMonitor = ConnectionStateMonitor()
-    val bus = RxBus()
-    val tabList = mutableListOf<Tab>()
+    val tabList by lazy { mutableListOf<Tab>().also { initTabs(it) } }
 
     var currentTheme = Theme.fallback
         set(value) {
             if (value !== field) {
                 field = value
                 Prefs.currentThemeId = currentTheme.marshallingId
-                bus.post(ThemeFontChangeEvent())
+                FlowEventBus.post(ThemeFontChangeEvent())
             }
         }
 
     val appOrSystemLanguageCode: String
-        get() {
-            val code = languageState.appLanguageCode
-            if (AccountUtil.getUserIdForLanguage(code) == 0) {
-                getUserIdForLanguage(code)
-            }
-            return code
-        }
+        get() = languageState.appLanguageCode
 
     val versionCode: Int
         get() {
@@ -114,10 +111,7 @@ class WikipediaApp : Application() {
             // TODO: why don't we ensure that the app language hasn't changed here instead of the client?
             if (defaultWikiSite == null) {
                 val lang = if (Prefs.mediaWikiBaseUriSupportsLangCode) appOrSystemLanguageCode else ""
-                val newWiki = WikiSite.forLanguageCode(lang)
-                // Kick off a task to retrieve the site info for the current wiki
-                SiteInfoClient.updateFor(newWiki)
-                defaultWikiSite = newWiki
+                defaultWikiSite = WikiSite.forLanguageCode(lang)
             }
             return defaultWikiSite!!
         }
@@ -132,8 +126,8 @@ class WikipediaApp : Application() {
     val haveMainActivity
         get() = activityLifecycleHandler.haveMainActivity()
 
-    val isAnyActivityResumed
-        get() = activityLifecycleHandler.isAnyActivityResumed
+    val currentResumedActivity
+        get() = activityLifecycleHandler.getResumedActivity()
 
     val voiceRecognitionAvailable by lazy {
         try {
@@ -148,6 +142,14 @@ class WikipediaApp : Application() {
     override fun onCreate() {
         super.onCreate()
 
+        // The system WebView's sandboxed renderer can get bound to the app and run onCreate()
+        // in an isolated process, where UserManager (and thus SharedPreferences) is not available.
+        // In such a case, there's no point continuing initialization.
+        if ((Build.VERSION.SDK_INT >= Build.VERSION_CODES.P && Process.isIsolated()) ||
+            getSystemService(UserManager::class.java) == null) {
+            return
+        }
+
         WikiSite.setDefaultBaseUrl(Prefs.mediaWikiBaseUrl)
 
         connectionStateMonitor.enable()
@@ -157,14 +159,8 @@ class WikipediaApp : Application() {
         // See Javadocs and http://developer.android.com/tools/support-library/index.html#rev23-4-0
         AppCompatDelegate.setCompatVectorFromResourcesEnabled(true)
 
-        // This handler will catch exceptions thrown from Observables after they are disposed,
-        // or from Observables that are (deliberately or not) missing an onError handler.
-        // TODO: consider more comprehensive handling of these errors.
-        RxJavaPlugins.setErrorHandler(Functions.emptyConsumer())
-
         currentTheme = unmarshalTheme(Prefs.currentThemeId)
 
-        initTabs()
         enableWebViewDebugging()
         registerActivityLifecycleCallbacks(activityLifecycleHandler)
         registerComponentCallbacks(activityLifecycleHandler)
@@ -180,6 +176,8 @@ class WikipediaApp : Application() {
         WikipediaFirebaseMessagingService.updateSubscription()
 
         EventPlatformClient.setUpStreamConfigs()
+
+        ImageService.setImplementation(CoilImageServiceLoader())
     }
 
     /**
@@ -188,9 +186,9 @@ class WikipediaApp : Application() {
     fun getAcceptLanguage(wiki: WikiSite?): String {
         val wikiLang = if (wiki == null || "meta" == wiki.languageCode) "" else wiki.languageCode
         return AcceptLanguageUtil.getAcceptLanguage(
-            languageState.getBcp47LanguageCode(wikiLang),
-            languageState.getBcp47LanguageCode(languageState.appLanguageCode),
-                languageState.getBcp47LanguageCode(languageState.systemLanguageCode))
+            wikiLang,
+            languageState.appLanguageCode,
+            languageState.systemLanguageCode)
     }
 
     fun constrainFontSizeMultiplier(mult: Int): Int {
@@ -202,7 +200,7 @@ class WikipediaApp : Application() {
         val multiplier = constrainFontSizeMultiplier(mult)
         if (multiplier != Prefs.textSizeMultiplier) {
             Prefs.textSizeMultiplier = multiplier
-            bus.post(ChangeTextSizeEvent())
+            FlowEventBus.post(ChangeTextSizeEvent())
             return true
         }
         return false
@@ -211,23 +209,19 @@ class WikipediaApp : Application() {
     fun setFontFamily(fontFamily: String) {
         if (fontFamily != Prefs.fontFamily) {
             Prefs.fontFamily = fontFamily
-            bus.post(ThemeFontChangeEvent())
+            FlowEventBus.post(ThemeFontChangeEvent())
         }
     }
 
-    fun putCrashReportProperty(key: String?, value: String?) {
-        // TODO: add custom properties to crash report
-    }
-
-    fun logCrashManually(throwable: Throwable) {
+    fun logError(throwable: Throwable) {
         L.e(throwable)
-        // TODO: send exception to custom crash reporting system
+        ClientErrorEvent().logError(throwable)
     }
 
     fun commitTabState() {
         if (tabList.isEmpty()) {
             Prefs.clearTabs()
-            initTabs()
+            initTabs(tabList)
         } else {
             Prefs.tabs = tabList
         }
@@ -236,12 +230,11 @@ class WikipediaApp : Application() {
     /**
      * Gets the current size of the app's font. This is given as a device-specific size (not "sp"),
      * and can be passed directly to setTextSize() functions.
-     * @param window The window on which the font will be displayed.
      * @return Actual current size of the font.
      */
-    fun getFontSize(window: Window, editing: Boolean = false): Float {
-        return DimenUtil.getFontSizeFromSp(window,
-                resources.getDimension(R.dimen.textSize)) * (1.0f + (if (editing) Prefs.editingTextSizeMultiplier else Prefs.textSizeMultiplier) *
+    fun getFontSize(editing: Boolean = false): Float {
+        return DimenUtil.getFontSizeFromSp(resources.getDimension(R.dimen.textSize)) *
+                (1.0f + (if (editing) Prefs.editingTextSizeMultiplier else Prefs.textSizeMultiplier) *
                 DimenUtil.getFloat(R.dimen.textSizeMultiplierFactor))
     }
 
@@ -250,21 +243,37 @@ class WikipediaApp : Application() {
         defaultWikiSite = null
     }
 
-    @SuppressLint("CheckResult")
     fun logOut() {
-        L.d("Logging out")
+        MainScope().launch(CoroutineExceptionHandler { _, t ->
+            L.e(t)
+        }) {
+            L.d("Logging out")
+            ServiceFactory.get(wikiSite).getToken().query?.csrfToken()?.let { token ->
+                WikipediaFirebaseMessagingService.unsubscribePushToken(token, Prefs.pushNotificationToken)
+                ServiceFactory.get(wikiSite).postLogout(token)
+            }
+        }.invokeOnCompletion {
+            resetAfterLogOut()
+        }
+    }
+
+    fun resetAfterLogOut() {
         AccountUtil.removeAccount()
         Prefs.isPushNotificationTokenSubscribed = false
         Prefs.pushNotificationTokenOld = ""
-        ServiceFactory.get(wikiSite).getTokenObservable()
-                .subscribeOn(Schedulers.io())
-                .flatMap {
-                    val csrfToken = it.query!!.csrfToken()
-                    WikipediaFirebaseMessagingService.unsubscribePushToken(csrfToken!!, Prefs.pushNotificationToken)
-                            .flatMap { ServiceFactory.get(wikiSite).postLogout(csrfToken).subscribeOn(Schedulers.io()) }
-                }
-                .doFinally { SharedPreferenceCookieManager.instance.clearAllCookies() }
-                .subscribe({ L.d("Logout complete.") }) { L.e(it) }
+        Prefs.lastBackgroundLoginDateTime = ""
+        Prefs.tempAccountWelcomeShown = false
+        Prefs.tempAccountCreateDay = 0L
+        Prefs.tempAccountDialogShown = false
+        Prefs.impactLastQueryTime = 0
+        Prefs.impactLastResponseBody = emptyMap()
+        PrefsYearInReviewStore.onLoggedOut()
+        SharedPreferenceCookieManager.instance.clearAllCookies()
+        MainScope().launch {
+            AppDatabase.instance.notificationDao().deleteAll()
+        }
+        FlowEventBus.post(LoggedOutEvent())
+        L.d("Logout complete.")
     }
 
     private fun enableWebViewDebugging() {
@@ -282,31 +291,12 @@ class WikipediaApp : Application() {
         return result
     }
 
-    @SuppressLint("CheckResult")
-    private fun getUserIdForLanguage(code: String) {
-        if (!AccountUtil.isLoggedIn || AccountUtil.userName.isNullOrEmpty()) {
-            return
-        }
-        val wikiSite = WikiSite.forLanguageCode(code)
-        ServiceFactory.get(wikiSite).userInfo
-                .subscribeOn(Schedulers.io())
-                .observeOn(AndroidSchedulers.mainThread())
-                .subscribe({
-                    if (AccountUtil.isLoggedIn && it.query!!.userInfo != null) {
-                        // noinspection ConstantConditions
-                        val id = it.query!!.userInfo!!.id
-                        AccountUtil.putUserIdForLanguage(code, id)
-                        L.d("Found user ID $id for $code")
-                    }
-                }) { L.e("Failed to get user ID for $code", it) }
-    }
-
-    private fun initTabs() {
+    private fun initTabs(tabs: MutableList<Tab>) {
         if (Prefs.hasTabs) {
-            tabList.addAll(Prefs.tabs)
+            tabs.addAll(Prefs.tabs)
         }
-        if (tabList.isEmpty()) {
-            tabList.add(Tab())
+        if (tabs.isEmpty()) {
+            tabs.add(Tab())
         }
     }
 

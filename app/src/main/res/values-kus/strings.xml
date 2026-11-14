@@ -2,7 +2,6 @@
 <!-- Authors:
 * Agurwin Isaac
 * Akudugu
-* Amire80
 * Awinimi
 * Cooltey
 * Dbrant
@@ -31,7 +30,7 @@
   <string name="page_error_back_to_main">Lɛm nya\'aŋ</string>
   <string name="error_back">Lɛm nya\'aŋ</string>
   <string name="error_next">Tɔlisim</string>
-  <string name="menu_clear_all_history">Saasim labakʋda</string>
+  <string name="menu_clear_all_history" fuzzy="true">Saasim labakʋda</string>
   <string name="history_item_deleted">%s yisimi li yi\' labakʋda ni</string>
   <string name="history_items_deleted">%d labaya la yi\' labakʋda la ni</string>
   <string name="history_item_delete_undo">Saamɛ li</string>
@@ -44,7 +43,7 @@
   <string name="wikimedia_commons">Wikimedia yɛlbabʋg</string>
   <string name="wikidata">Wikidata</string>
   <string name="dialog_title_clear_history">Ieemsim labakʋda tʋʋma la</string>
-  <string name="dialog_message_clear_history">Nɛ\'ɛŋa na eensi fʋ labakʋda tʋʋma la wʋsa,ka yɔ linɛ ka fʋ yɔ\'ɔg nannanna la wʋsa. Fʋ siaki yaa?</string>
+  <string name="dialog_message_clear_history" fuzzy="true">Nɛ\'ɛŋa na eensi fʋ labakʋda tʋʋma la wʋsa,ka yɔ linɛ ka fʋ yɔ\'ɔg nannanna la wʋsa. Fʋ siaki yaa?</string>
   <string name="dialog_message_clear_history_yes">Een</string>
   <string name="dialog_message_clear_history_no">Ayei</string>
   <string name="share_via">Pʋdʋgim n dɔl</string>
@@ -57,7 +56,7 @@
   <string name="page_edit_history_filter_by">Maalim dɔlis</string>
   <string name="page_edit_history_filter_by_all">Dɛmisa wʋsa (%s)</string>
   <string name="page_edit_history_filter_by_user">tʋntʋn dɛmisa (%s)</string>
-  <string name="page_edit_history_filter_by_anon">Anon dɛmisa (%s)</string>
+  <string name="page_edit_history_filter_by_anon" fuzzy="true">Anon dɛmisa (%s)</string>
   <string name="page_edit_history_filter_by_bot">Bot dɛmisa (%s)</string>
   <string name="page_edit_history_metrics_content_description">Makim yi %1$s paae %2$s</string>
   <plurals name="page_edit_history_article_edits_since_year">
@@ -140,8 +139,8 @@
   <string name="login_username_hint">Tʋmtʋm yʋ\'ʋr</string>
   <string name="login_password_hint">Paaswɛɛd</string>
   <string name="account_creation_password_hint">Paaswɛɛd</string>
-  <string name="login_2fa_hint">Fageta ayi ɔtɛntifikeesin koodi</string>
-  <string name="login_2fa_other_workflow_error_msg">Niŋim fageta ayi ɔtɛntikeesin! M bɛlimnɛ lɛm tʋʋma la mɛŋ ni ka kpɛn\'nɛ fʋ 2FA tokin, ka mɔ\' ya\'as.</string>
+  <string name="login_2fa_hint" fuzzy="true">Fageta ayi ɔtɛntifikeesin koodi</string>
+  <string name="login_2fa_other_workflow_error_msg" fuzzy="true">Niŋim fageta ayi ɔtɛntikeesin! M bɛlimnɛ lɛm tʋʋma la mɛŋ ni ka kpɛn\'nɛ fʋ 2FA tokin, ka mɔ\' ya\'as.</string>
   <string name="onboarding_card_login">Kpɛn\'ɛm</string>
   <string name="page_editing_login">Kpɛn\'ɛm</string>
   <string name="reading_lists_sync_login">Kpɛn\'ɛm</string>
@@ -226,14 +225,9 @@
   <string name="privacy_policy_description">Su\'adim gban\'ar</string>
   <string name="terms_of_use_description">Tʋʋma suor dɔlisʋg</string>
   <string name="about_wikipedia_url">https://en.wikipedia.org/wiki/Wikipedia:About</string>
-  <string name="offline_reading_and_data_url">https://www.mediawiki.org/wiki/Wikimedia_Apps/Android_FAQ#Offline_reading_and_data</string>
-  <string name="android_app_faq_url">https://www.mediawiki.org/wiki/Wikimedia_Apps/Android_FAQ</string>
-  <string name="android_app_request_an_account_url">https://en.wikipedia.org/wiki/Wikipedia:Request_an_account</string>
-  <string name="android_app_edit_help_url">https://m.mediawiki.org/wiki/Wikimedia_Apps/Suggested_edits</string>
-  <string name="suggested_edits_image_tags_help_url">https://www.mediawiki.org/wiki/Wikimedia_Apps/Suggested_edits#Image_tags</string>
   <string name="about_libraries_heading">Gbana buoris banɛ zaŋi tʋm</string>
   <string name="about_contributors_heading">Tʋntʋnnib</string>
-  <string name="about_contributors">&lt;a href=\"https://www.mediawiki.org/wiki/Wikimedia_Apps/Team/Android\"&gt;Tʋntʋnnib lakir&lt;/a&gt;</string>
+  <string name="about_contributors">&lt;a href=\"https://www.mediawiki.org/wiki/Special:MyLanguage/Wikimedia_Apps/Team/Android\"&gt;Tʋntʋnnib lakir&lt;/a&gt;</string>
   <string name="about_translators_heading">pian\'alɛbigirib</string>
   <string name="about_translators_translatewiki">Sɔ\' da pɛsigi o mɛŋi lɛbig app kaŋa bɛ &lt;a href=\"https://translatewiki.net\"&gt;translatewiki.net&lt;/a&gt;.</string>
   <string name="about_app_license_heading">Kasɛta gbaʋŋ</string>
@@ -342,7 +336,6 @@
   <string name="tool_tip_bookmark_icon_text">Diim buukmak biel la ni ka atikil karʋŋ la\'ad la kpɛn\'.</string>
   <string name="page_view_in_browser">Gɔsim lakir burauza</string>
   <string name="tool_tip_toc_title">Sɔb bʋʋlʋm paamʋg tɔ\'ɔtɔ</string>
-  <string name="tool_tip_lang_button">Fʋ na nyaŋi ia ka karim wikipedia buudi bɛdegʋ app la ni.\n\nDiim ikoon la ka paas buudi pian\'ad bɛdegʋ.</string>
   <string name="error_response_malformed">Lɛbisa banɛ yi onɛ tisid labaya la san\'an tʋn\'e pʋ bɛ din nar si\'em.</string>
   <string name="error_unknown">Gbɛlʋŋ kanɛ ka ti zi\' naamya.</string>
   <string name="format_error_server_message">Labaar: \"%s\"</string>
@@ -476,8 +469,8 @@
     <item quantity="other">%d yis atikilnam la\'adin</item>
   </plurals>
   <plurals name="reading_list_articles_deleted_from_list">
-    <item quantity="one">%d ba yis atikili yi %s</item>
-    <item quantity="other">%d ba yis atikilnami yi %s</item>
+    <item quantity="one">%1$d ba yis atikili yi %2$s</item>
+    <item quantity="other">%1$d ba yis atikilnami yi %2$s</item>
   </plurals>
   <plurals name="reading_lists_deleted_message">
     <item quantity="one">%d list deleted</item>
@@ -489,7 +482,7 @@
   <string name="reading_lists_item_deleted">Ba yis %s la\'ad la ni</string>
   <string name="reading_list_item_delete_undo">Lɛbisim</string>
   <string name="reading_list_deleted">%s saaeya</string>
-  <string name="saved_list_empty_title">Lakir banɛ kpɛn\'ɛs nan kae</string>
+  <string name="saved_list_empty_title" fuzzy="true">Lakir banɛ kpɛn\'ɛs nan kae</string>
   <string name="reading_list_empty">Fʋ pʋ mɔr atikil I paas la\'akaŋa nii.</string>
   <string name="reading_list_add_to_other_list">Zaŋim paas karʋŋ la\'asieba ni</string>
   <string name="reading_list_move_to_other_list">Vurigim kpɛn\'ɛs karʋŋ la\'ad sieba ni</string>
@@ -518,7 +511,6 @@
   <string name="reading_lists_menu_create_list">Maalim la\'ad bɛn paal</string>
   <string name="reading_lists_menu_import_list">Kpɛn\'ɛsim la\'ad</string>
   <string name="reading_lists_menu_sort_by">Gaansim dɔlis</string>
-  <string name="reading_list_preference_login_or_signup_to_enable_sync_dialog_login">Kpɛn\'ɛm / yɔ\'ɔgim</string>
   <string name="reading_list_remove_list_dialog_ok_button_text">Awɔɔ</string>
   <string name="reading_list_delete_dialog_ok_button_text">Awɔɔ</string>
   <string name="reading_list_remove_from_list_dialog_cancel_button_text">Basim</string>
@@ -708,8 +700,6 @@
   <string name="description_edit_voice_input_description">Pian\'a nɛ kʋkɔri kpɛn\'ɛs</string>
   <string name="description_edit_learn_more">Zamis atikil pa\'ala bɛdegɔ</string>
   <string name="description_edit_image_caption_learn_more">Zamisim footo pian\'azut yɛla bɛdegʋ</string>
-  <string name="description_edit_description_learn_more_url">https://www.mediawiki.org/wiki/Wikimedia_Apps/Suggested_edits#Article_descriptions</string>
-  <string name="description_edit_image_caption_learn_more_url">https://www.mediawiki.org/wiki/Wikimedia_Apps/Suggested_edits#Image_captions</string>
   <string name="description_too_short">Sɔbʋg la gimnɛ galis.</string>
   <string name="description_starts_with_uppercase">Pin\'ilim nɛ sɔb Biel baanlim asɛɛ yiiga pian\'uk la na an yʋ\'ʋmɛŋir</string>
   <string name="description_starts_with_lowercase">Da pin\'in nɛ sɔb biel baanlʋgɔ.</string>
@@ -793,7 +783,6 @@
   <string name="suggested_edits_feed_card_add_image_caption">Paasim footo pian\'azug</string>
   <string name="suggested_edits_feed_card_translate_image_caption">Paasim footo pian\'azug (%s)</string>
   <string name="suggested_edits_feed_card_add_image_tags">Paasim footo Tɔ\'ɔŋirnam</string>
-  <string name="suggested_edits_snackbar_survey_action_text">Lɛbisi vɛɛnsʋg bu\'osa</string>
   <string name="suggested_edits_task_action_text_add">Paasim</string>
   <string name="suggested_edits_task_action_text_translate">Lɛbigim</string>
   <string name="suggested_edits_image_captions">Footo pian\'azut</string>
@@ -807,7 +796,6 @@
   <string name="suggested_edits_contribution_image_label">Footo</string>
   <string name="suggested_edits_contribution_article_label">Atikil</string>
   <string name="suggested_edits_contribution_views">%s gɔs</string>
-  <string name="suggested_edits_contribution_type_title">%1$d %2$s</string>
   <string name="suggested_edits_contribution_date_yesterday_text">Su\'os</string>
   <string name="suggested_edits_encourage_account_creation_title">Fʋ mi\'i ye sɔ\' wʋsa tʋn\'e dɛmisim Wikipedia?</string>
   <string name="suggested_edits_encourage_account_creation_login_button">Kpɛn\'ɛm/ paasim Wikipedia ni</string>
@@ -824,8 +812,8 @@
   <string name="image_recommendation_accept">Ɛɛn</string>
   <string name="image_recommendation_reject">Ayei</string>
   <string name="image_recommendation_notsure">Pʋ tis sidaa</string>
-  <string name="image_recommendation_reject_title">Bɔ\' ka di kʋ nyaŋɛ?</string>
-  <string name="image_recommendation_reject_subtitle">Fʋ gandigi la na sʋŋ bɛog sa pʋtɛnda.</string>
+  <string name="image_recommendation_reject_title" fuzzy="true">Bɔ\' ka di kʋ nyaŋɛ?</string>
+  <string name="image_recommendation_reject_subtitle" fuzzy="true">Fʋ gandigi la na sʋŋ bɛog sa pʋtɛnda.</string>
   <string name="image_recommendation_reject_not_relevant">Footo la pʋ mɔr sʋŋirɛ</string>
   <string name="image_recommendation_reject_no_info">Labaar la pʋ zu\'oe ka m na gban\'e gban\'arɛ</string>
   <string name="image_recommendation_reject_offensive">Footo la mɔr daʋŋ</string>
@@ -865,9 +853,6 @@
   <string name="on_this_day_dialog_previous_month">Nwadig kanɛ gaad la</string>
   <string name="more_language_options">Bɛdigʋ</string>
   <string name="add_wikipedia_languages_text">Paasim Wikipiidia pian\'ad buudinam</string>
-  <string name="dialog_of_remove_chinese_variants_from_app_lang_title">Yis Chinese pian\'adi fʋ app buudi pian\'adnaminɛɛ?</string>
-  <string name="dialog_of_remove_chinese_variants_from_app_lang_edit">Dɛmisim buudi pian\'adnam</string>
-  <string name="dialog_of_remove_chinese_variants_from_app_lang_no">Ayei m pʋ\'ʋsya</string>
   <string name="remove_language_dialog_cancel_button_text">Basim</string>
   <string name="remove_language_dialog_ok_button_text">Awɔɔ</string>
   <string name="remove_all_language_warning_dialog_ok_button_text">Awɔɔ</string>
@@ -927,8 +912,6 @@
   <string name="insert_media_insert_button">Kpɛn\'ɛsim</string>
   <string name="main_drawer_help">Sʋŋir</string>
   <string name="main_drawer_login">Kpɛn\'ɛm pʋʋgin/ paasim Wikipedia ni</string>
-  <string name="main_tooltip_text">Agoo %s, fʋ mi\'i ye sɔ\' wʋsa tʋn\'e dɛmisim Wikipedia?</string>
-  <string name="main_tooltip_text_v2">Fʋ mi\'i ye sɔ\' wʋsa tʋn\'e dɛmisim Wikipedia?</string>
   <string name="main_tooltip_action_button">Pin\'ilim</string>
   <string name="main_tooltip_watchlist_title">Fʋn na gɔt si\'el</string>
   <string name="custom_date_picker_dialog_ok_button_text">Awɔɔ</string>
@@ -946,7 +929,6 @@
   <string name="talk_warn_save_dialog_hint">Labaar pian\'azug</string>
   <string name="talk_warn_save_dialog_publish">Zaŋim niŋ</string>
   <string name="talk_warn_save_dialog_cancel">Basim</string>
-  <string name="talk_warn_saved_message_dropdown">Kpɛn\'ɛsim labaya</string>
   <string name="talk_page_empty">Sɔnsʋg lakir kaŋa anɛ zaalim.</string>
   <string name="talk_page_empty_title">Sɔnsʋg la pin\'inɛ kpɛla</string>
   <string name="talk_add_reply">Lɛbisim</string>
@@ -1024,10 +1006,10 @@
   <string name="revision_rollback_success">Dɛmisa lɛb din aan si\'em.</string>
   <string name="revision_compare_button">Makim gɔs</string>
   <string name="watchlist_page_add_to_watchlist_snackbar_action">Tiakim</string>
-  <string name="watchlist_page_add_to_watchlist_snackbar_period_for_one_week">Bakɔi yinne</string>
-  <string name="watchlist_page_add_to_watchlist_snackbar_period_for_one_month">Nwadig yinne</string>
-  <string name="watchlist_page_add_to_watchlist_snackbar_period_for_three_months">Nwadisa atan</string>
-  <string name="watchlist_page_add_to_watchlist_snackbar_period_for_six_months">Nwadisa ayuobʋ</string>
+  <string name="watchlist_page_add_to_watchlist_snackbar_period_for_one_week" fuzzy="true">Bakɔi yinne</string>
+  <string name="watchlist_page_add_to_watchlist_snackbar_period_for_one_month" fuzzy="true">Nwadig yinne</string>
+  <string name="watchlist_page_add_to_watchlist_snackbar_period_for_three_months" fuzzy="true">Nwadisa atan</string>
+  <string name="watchlist_page_add_to_watchlist_snackbar_period_for_six_months" fuzzy="true">Nwadisa ayuobʋ</string>
   <string name="watchlist_expiry_dialog_one_week">Bakɔi yinne</string>
   <string name="watchlist_expiry_dialog_one_month">Nwadig yinne</string>
   <string name="watchlist_expiry_dialog_three_months">Nwadisa atan\'</string>

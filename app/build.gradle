@@ -1,10 +1,13 @@
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+
 plugins {
     id 'com.android.application'
     id 'com.google.devtools.ksp'
     id 'com.google.gms.google-services'
-    id 'kotlin-android'
     id 'kotlin-parcelize'
     id 'kotlinx-serialization'
+    alias(libs.plugins.compose.compiler)
+    alias(libs.plugins.baselineprofile)
 }
 
 // Copy the signing.properties.sample file to ~/.sign/signing.properties and adjust the values.
@@ -14,37 +17,37 @@ final Properties PROD_PROPS = loadProperties(PROD_PROPS_FILE)
 final Properties REPO_PROPS = loadProperties(REPO_PROPS_FILE)
 
 static def computeVersionName(versionCode, label) {
-    return "2.7.${versionCode}-${label}-${(new Date()).format('yyyy-MM-dd')}"
+    return "${versionCode}-${label}-${(new Date()).format('yyyy-MM-dd')}"
 }
 
-final JavaVersion JAVA_VERSION = JavaVersion.VERSION_17
-
 android {
-    compileSdk 34
+    compileSdk = 37
 
     compileOptions {
-        coreLibraryDesugaringEnabled true
+        coreLibraryDesugaringEnabled = true
 
-        sourceCompatibility = JAVA_VERSION
-        targetCompatibility = JAVA_VERSION
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
 
-    kotlinOptions {
-        jvmTarget = JAVA_VERSION
+    kotlin {
+        compilerOptions {
+            jvmTarget = JvmTarget.JVM_17
+        }
     }
 
     defaultConfig {
         applicationId 'org.wikipedia'
-        minSdk 21
-        targetSdk 34
-        versionCode 50479
+        minSdk = 24
+        targetSdk = 37
+        versionCode 50617
         testApplicationId 'org.wikipedia.test'
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         testInstrumentationRunnerArguments clearPackageData: 'true'
 
         vectorDrawables.useSupportLibrary = true
 
-        signingConfig signingConfigs.debug
+        signingConfig = signingConfigs.debug
 
         buildConfigField "String", "DEFAULT_RESTBASE_URI_FORMAT", '"%1$s://%2$s/api/rest_v1/"'
         buildConfigField "String", "META_WIKI_BASE_URI", '"https://meta.wikimedia.org"'
@@ -52,17 +55,20 @@ android {
         buildConfigField "String", "EVENTGATE_LOGGING_EXTERNAL_BASE_URI", '"https://intake-logging.wikimedia.org"'
         def TEST_LOGIN_USERNAME = System.getenv('TEST_LOGIN_USERNAME')
         def TEST_LOGIN_PASSWORD = System.getenv('TEST_LOGIN_PASSWORD')
+
         buildConfigField "String", "TEST_LOGIN_USERNAME", TEST_LOGIN_USERNAME != null ? "\"${TEST_LOGIN_USERNAME}\"" : '"Foo"'
         buildConfigField "String", "TEST_LOGIN_PASSWORD", TEST_LOGIN_PASSWORD != null ? "\"${TEST_LOGIN_PASSWORD}\"" : '"Bar"'
     }
 
     testOptions {
-        execution 'ANDROIDX_TEST_ORCHESTRATOR'
+        execution = 'ANDROIDX_TEST_ORCHESTRATOR'
+        animationsDisabled = true
     }
 
     buildFeatures {
-        viewBinding true
-        buildConfig true
+        viewBinding = true
+        buildConfig = true
+        compose = true
     }
 
     androidResources {
@@ -71,15 +77,19 @@ android {
 
     sourceSets {
 
-        prod { java.srcDirs += 'src/extra/java' }
-        beta { java.srcDirs += 'src/extra/java' }
-        alpha { java.srcDirs += 'src/extra/java' }
-        dev { java.srcDirs += 'src/extra/java' }
-        custom { java.srcDirs += 'src/extra/java' }
-
-        androidTest {
-            assets.srcDirs += files("$projectDir/schemas".toString())
+        ['prod', 'beta', 'alpha', 'dev', 'custom'].forEach { name ->
+            maybeCreate(name).java.srcDirs += 'src/extra/java'
+            maybeCreate(name).kotlin.srcDirs += 'src/extra/java'
+            maybeCreate(name).res.srcDirs += 'src/extra/res'
         }
+
+        // The build types created by the Baseline Profile plugin are release builds, so give them the release-only sources.
+        ['nonMinifiedRelease', 'benchmarkRelease'].forEach { name ->
+            maybeCreate(name).java.srcDirs += 'src/release/java'
+            maybeCreate(name).kotlin.srcDirs += 'src/release/java'
+        }
+
+        maybeCreate('androidTest').assets.srcDirs += files("$projectDir/schemas".toString())
     }
 
     signingConfigs {
@@ -94,12 +104,12 @@ android {
     buildTypes {
         debug {
             minifyEnabled false
-            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
             testProguardFiles 'test-proguard-rules.pro'
         }
         release {
             minifyEnabled true
-            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
             testProguardFiles 'test-proguard-rules.pro'
         }
     }
@@ -108,15 +118,16 @@ android {
 
     productFlavors {
         dev {
+            isDefault = true
             versionName computeVersionName(defaultConfig.versionCode, 'dev')
             applicationIdSuffix '.dev'
-            buildConfigField "String", "META_WIKI_BASE_URI", '"https://meta.wikimedia.beta.wmflabs.org"'
-            buildConfigField "String", "EVENTGATE_ANALYTICS_EXTERNAL_BASE_URI", '"https://intake-analytics.wikimedia.beta.wmflabs.org"'
-            buildConfigField "String", "EVENTGATE_LOGGING_EXTERNAL_BASE_URI", '"https://intake-logging.wikimedia.beta.wmflabs.org"'
+            buildConfigField "String", "META_WIKI_BASE_URI", '"https://meta.wikimedia.beta.wmcloud.org"'
+            buildConfigField "String", "EVENTGATE_ANALYTICS_EXTERNAL_BASE_URI", '"https://intake-analytics-beta.wmcloud.org"'
+            buildConfigField "String", "EVENTGATE_LOGGING_EXTERNAL_BASE_URI", '"https://intake-logging-beta.wmcloud.org"'
         }
         prod {
             versionName computeVersionName(defaultConfig.versionCode, 'r')
-            signingConfig signingConfigs.prod
+            signingConfig = signingConfigs.prod
         }
         alpha {
             versionName computeVersionName(defaultConfig.versionCode, 'alpha')
@@ -125,17 +136,17 @@ android {
         beta {
             versionName computeVersionName(defaultConfig.versionCode, 'beta')
             applicationIdSuffix '.beta'
-            signingConfig signingConfigs.prod
+            signingConfig = signingConfigs.prod
         }
         fdroid {
             versionName computeVersionName(defaultConfig.versionCode, 'fdroid')
-            signingConfig signingConfigs.prod
+            signingConfig = signingConfigs.prod
         }
         custom {
             versionName computeVersionName(defaultConfig.versionCode, customChannel)
             // next line is for injecting a custom channel value into the custom/AndroidManifest.xml
             manifestPlaceholders = [customChannel:getProperty('customChannel').toString()]
-            signingConfig signingConfigs.prod
+            signingConfig = signingConfigs.prod
         }
     }
 
@@ -148,22 +159,27 @@ android {
 
     bundle {
         language {
-            enableSplit false
+            enableSplit = false
         }
     }
-    namespace 'org.wikipedia'
+    namespace = 'org.wikipedia'
 }
 
 ksp {
     arg("room.schemaLocation", "$projectDir/schemas")
 }
 
-configurations {
-    compileClasspath.extendsFrom(implementation)
+// See baselineprofile/README.md for how the Baseline and Startup Profiles are generated and maintained.
+baselineProfile {
+    // Profiles are generated from a single flavor (alpha) and shared by all flavors, since the code is the same.
+    mergeIntoMain = true
+    saveInSrc = true
+    // Generating requires a device, so it must be run explicitly instead of during every release build.
+    automaticGenerationDuringBuild = false
+    // Uses the startup profile to put the classes needed at startup into the primary DEX file.
+    dexLayoutOptimization = true
 }
 
-apply from: '../gradle/src/test.gradle'
-apply from: '../gradle/src/checkstyle.gradle'
 apply from: '../gradle/src/ktlint.gradle'
 
 dependencies {
@@ -172,105 +188,138 @@ dependencies {
     // use http://gradleplease.appspot.com/ or http://search.maven.org/.
     // Debug with ./gradlew -q app:dependencies --configuration compile
 
-    String okHttpVersion = '4.12.0'
-    String retrofitVersion = '2.9.0'
-    String glideVersion = '4.16.0'
-    String mockitoVersion = '5.2.0'
-    String leakCanaryVersion = '2.13'
-    String kotlinCoroutinesVersion = '1.7.3'
-    String firebaseMessagingVersion = '23.4.1'
-    String mlKitVersion = '17.0.5'
-    String roomVersion = "2.6.1"
-    String espressoVersion = '3.5.1'
-    String serialization_version = '1.6.2'
-    String metricsVersion = '2.4'
+    coreLibraryDesugaring libs.desugar.jdk.libs
 
-    coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.0.4'
+    implementation project(':analytics:testkitchen')
 
-    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlin_version"
-    implementation "org.jetbrains.kotlinx:kotlinx-coroutines-core:$kotlinCoroutinesVersion"
-    implementation "org.jetbrains.kotlinx:kotlinx-coroutines-android:$kotlinCoroutinesVersion"
-    implementation "org.jetbrains.kotlinx:kotlinx-serialization-json:$serialization_version"
+    implementation libs.kotlin.stdlib.jdk8
+    implementation libs.kotlinx.coroutines.core
+    implementation libs.kotlinx.coroutines.android
+    implementation libs.kotlinx.serialization.json
 
-    implementation "com.google.android.material:material:1.11.0"
-    implementation 'androidx.appcompat:appcompat:1.6.1'
-    implementation "androidx.core:core-ktx:1.12.0"
-    implementation "androidx.browser:browser:1.7.0"
-    implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
-    implementation "androidx.fragment:fragment-ktx:1.6.2"
-    implementation "androidx.paging:paging-runtime-ktx:3.2.1"
-    implementation "androidx.palette:palette-ktx:1.0.0"
-    implementation "androidx.preference:preference-ktx:1.2.1"
-    implementation "androidx.recyclerview:recyclerview:1.3.2"
-    implementation "androidx.viewpager2:viewpager2:1.0.0"
-    implementation 'com.google.android.flexbox:flexbox:3.0.0'
-    implementation 'com.android.installreferrer:installreferrer:2.2'
-    implementation 'androidx.drawerlayout:drawerlayout:1.2.0'
-    implementation 'androidx.work:work-runtime-ktx:2.9.0'
-    implementation "org.wikimedia.metrics:metrics-platform:$metricsVersion"
+    implementation libs.material
+    implementation libs.appcompat
+    implementation libs.core.ktx
+    implementation libs.browser
+    implementation libs.constraintlayout
+    implementation libs.fragment.ktx
+    implementation libs.paging.runtime.ktx
+    implementation libs.palette.ktx
+    implementation libs.preference.ktx
+    implementation libs.recyclerview
+    implementation libs.viewpager2
+    implementation libs.flexbox
+    implementation libs.drawerlayout
+    implementation libs.swiperefreshlayout
+    implementation libs.work.runtime.ktx
+    implementation libs.hcaptcha
 
-    implementation ('com.github.michael-rapp:chrome-like-tab-switcher:0.4.6') {
-        exclude group: 'org.jetbrains'
+    implementation libs.okhttp3.logging.interceptor
+    implementation libs.retrofit
+    implementation libs.commons.lang3
+    implementation libs.jsoup
+    implementation libs.photoview
+    implementation libs.balloon
+    implementation libs.retrofit2.kotlinx.serialization.converter
+    implementation libs.paging.compose
+    implementation libs.lottie.compose
+    implementation libs.media3.exoplayer
+
+    // Use the OpenGL ES variant of MapLibre, since the default variant requires Vulkan, which is
+    // not available on some lower-budget devices, and causes the Play Store to exclude those devices.
+    implementation libs.maplibre
+    implementation(libs.maplibre.annotation) {
+        exclude group: 'org.maplibre.gl', module: 'android-sdk'
     }
 
-    implementation "com.github.bumptech.glide:glide:$glideVersion"
-    implementation "com.github.bumptech.glide:okhttp3-integration:$glideVersion"
-    ksp "com.github.bumptech.glide:ksp:$glideVersion"
+    implementation libs.androidx.room.runtime
+    annotationProcessor libs.androidx.room.compiler
+    ksp libs.androidx.room.compiler
+    implementation libs.androidx.room.ktx
 
-    implementation "com.squareup.okhttp3:okhttp-tls:$okHttpVersion"
-    implementation "com.squareup.okhttp3:logging-interceptor:$okHttpVersion"
-    implementation "com.squareup.retrofit2:retrofit:$retrofitVersion"
-    implementation "com.squareup.retrofit2:adapter-rxjava3:$retrofitVersion"
-    implementation "io.reactivex.rxjava3:rxjava:3.1.8"
-    implementation "io.reactivex.rxjava3:rxandroid:3.0.2"
-    implementation 'org.apache.commons:commons-lang3:3.14.0'
-    implementation 'org.jsoup:jsoup:1.17.2'
-    implementation 'com.github.chrisbanes:PhotoView:2.3.0'
-    implementation 'com.github.skydoves:balloon:1.6.4'
-    implementation "com.jakewharton.retrofit:retrofit2-kotlinx-serialization-converter:1.0.0"
-
-    implementation 'org.maplibre.gl:android-sdk:10.2.0'
-    implementation 'org.maplibre.gl:android-plugin-annotation-v9:2.0.2'
-
-    implementation("androidx.room:room-runtime:$roomVersion")
-    annotationProcessor "androidx.room:room-compiler:$roomVersion"
-    ksp "androidx.room:room-compiler:$roomVersion"
-    implementation("androidx.room:room-ktx:$roomVersion")
-    implementation "androidx.room:room-rxjava3:$roomVersion"
+    implementation libs.androidx.ui.graphics
+    implementation libs.androidx.glance.appwidget
+    implementation libs.androidx.glance.material3
+    implementation libs.androidx.glance.preview
+    implementation libs.androidx.glance.appwidget.preview
 
     // For language detection during editing
-    prodImplementation "com.google.mlkit:language-id:$mlKitVersion"
-    betaImplementation "com.google.mlkit:language-id:$mlKitVersion"
-    alphaImplementation "com.google.mlkit:language-id:$mlKitVersion"
-    devImplementation "com.google.mlkit:language-id:$mlKitVersion"
-    customImplementation "com.google.mlkit:language-id:$mlKitVersion"
+    prodImplementation libs.com.google.mlkit.language.id
+    betaImplementation libs.com.google.mlkit.language.id
+    alphaImplementation libs.com.google.mlkit.language.id
+    devImplementation libs.com.google.mlkit.language.id
+    customImplementation libs.com.google.mlkit.language.id
 
     // For receiving push notifications for logged-in users.
-    prodImplementation "com.google.firebase:firebase-messaging-ktx:$firebaseMessagingVersion"
-    betaImplementation "com.google.firebase:firebase-messaging-ktx:$firebaseMessagingVersion"
-    alphaImplementation "com.google.firebase:firebase-messaging-ktx:$firebaseMessagingVersion"
-    devImplementation "com.google.firebase:firebase-messaging-ktx:$firebaseMessagingVersion"
-    customImplementation "com.google.firebase:firebase-messaging-ktx:$firebaseMessagingVersion"
+    prodImplementation libs.com.google.firebase.firebase.messaging
+    betaImplementation libs.com.google.firebase.firebase.messaging
+    alphaImplementation libs.com.google.firebase.firebase.messaging
+    devImplementation libs.com.google.firebase.firebase.messaging
+    customImplementation libs.com.google.firebase.firebase.messaging
 
-    debugImplementation "com.squareup.leakcanary:leakcanary-android:$leakCanaryVersion"
-    implementation "com.squareup.leakcanary:plumber-android:$leakCanaryVersion"
+    // For integrating with Google Pay for donations
+    prodImplementation libs.com.google.android.gms.play.services.wallet2
+    betaImplementation libs.com.google.android.gms.play.services.wallet2
+    alphaImplementation libs.com.google.android.gms.play.services.wallet2
+    devImplementation libs.com.google.android.gms.play.services.wallet2
+    customImplementation libs.com.google.android.gms.play.services.wallet2
 
-    testImplementation 'junit:junit:4.13.2'
-    testImplementation "org.mockito:mockito-inline:$mockitoVersion"
-    testImplementation 'org.robolectric:robolectric:4.11.1'
-    testImplementation "com.squareup.okhttp3:okhttp:$okHttpVersion"
-    testImplementation "com.squareup.okhttp3:mockwebserver:$okHttpVersion"
-    testImplementation 'org.hamcrest:hamcrest:2.2'
-    testImplementation "androidx.room:room-testing:$roomVersion"
+    // For InstallReferrer Library
+    prodImplementation libs.installreferrer
+    betaImplementation libs.installreferrer
+    alphaImplementation libs.installreferrer
+    devImplementation libs.installreferrer
+    customImplementation libs.installreferrer
 
-    androidTestImplementation "androidx.test.espresso:espresso-core:$espressoVersion"
-    androidTestImplementation "androidx.test.espresso:espresso-contrib:$espressoVersion"
-    androidTestImplementation "androidx.test.espresso:espresso-intents:$espressoVersion"
-    androidTestImplementation "androidx.test.espresso:espresso-web:$espressoVersion"
-    androidTestImplementation 'androidx.test.ext:junit:1.1.5'
-    androidTestImplementation 'androidx.test.uiautomator:uiautomator:2.3.0'
-    androidTestImplementation "androidx.room:room-testing:$roomVersion"
-    androidTestUtil 'androidx.test:orchestrator:1.4.2'
+    debugImplementation libs.leakcanary.android
+    implementation libs.plumber.android
+
+    // Baseline and Startup Profiles: profileinstaller applies the profile on devices that don't
+    // get it from the Play Store, and the baselineprofile module generates the profile.
+    implementation libs.androidx.profileinstaller
+    baselineProfile project(':baselineprofile')
+
+    testImplementation libs.junit
+    testImplementation libs.mockk
+    testImplementation libs.robolectric
+    testImplementation libs.okhttp3.okhttp
+    testImplementation libs.mockwebserver
+    testImplementation libs.room.testing
+
+    androidTestImplementation libs.espresso.core
+    androidTestImplementation libs.espresso.contrib
+    androidTestImplementation libs.androidx.espresso.intents
+    androidTestImplementation libs.espresso.web
+    androidTestImplementation libs.androidx.junit
+    androidTestImplementation libs.androidx.uiautomator
+    androidTestImplementation libs.room.testing
+    androidTestUtil libs.androidx.orchestrator
+
+    implementation(libs.coil.compose)
+    implementation(libs.coil.network.okhttp)
+    implementation(libs.coil.gif)
+    implementation(libs.coil.svg)
+
+    // Rive
+    implementation libs.rive.android
+    implementation libs.androidx.startup.runtime
+
+    // Compose Library
+    def composeBom = platform(libs.composeBom)
+    implementation(composeBom)
+    implementation(libs.compose.material3)
+    implementation(libs.compose.ui)
+    implementation(libs.compose.ui.tooling.preview)
+    debugImplementation(libs.compose.ui.tooling)
+    implementation(libs.compose.activity)
+    implementation(libs.compose.view.model)
+    implementation(libs.androidx.navigation.compose)
+
+    // Compose Test Library
+    androidTestImplementation(libs.compose.test)
+    androidTestImplementation(composeBom)
+    debugImplementation(libs.compose.debug.test)
+    debugImplementation(composeBom)
 }
 
 private setSigningConfigKey(config, Properties props) {

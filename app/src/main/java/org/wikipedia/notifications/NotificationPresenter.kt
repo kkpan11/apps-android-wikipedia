@@ -1,36 +1,64 @@
 package org.wikipedia.notifications
 
-import android.app.NotificationManager
+import android.Manifest
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
-import android.graphics.*
-import android.net.Uri
+import android.content.pm.PackageManager
+import android.graphics.Bitmap
+import android.graphics.Paint
+import android.graphics.Rect
+import android.graphics.RectF
+import android.graphics.Typeface
+import android.os.Build
+import androidx.activity.result.ActivityResultLauncher
 import androidx.annotation.ColorRes
 import androidx.annotation.DrawableRes
 import androidx.appcompat.view.ContextThemeWrapper
 import androidx.core.app.NotificationCompat
+import androidx.core.app.NotificationManagerCompat
 import androidx.core.app.PendingIntentCompat
 import androidx.core.app.RemoteInput
 import androidx.core.content.ContextCompat
-import androidx.core.content.getSystemService
 import androidx.core.graphics.applyCanvas
 import androidx.core.graphics.createBitmap
+import androidx.core.net.toUri
 import org.wikipedia.Constants
 import org.wikipedia.R
 import org.wikipedia.WikipediaApp
+import org.wikipedia.auth.AccountUtil
 import org.wikipedia.dataclient.WikiSite
 import org.wikipedia.diff.ArticleEditDetailsActivity
 import org.wikipedia.notifications.db.Notification
 import org.wikipedia.page.PageTitle
 import org.wikipedia.richtext.RichTextUtil
+import org.wikipedia.settings.Prefs
 import org.wikipedia.talk.TalkTopicsActivity
 import org.wikipedia.theme.Theme
-import org.wikipedia.util.*
+import org.wikipedia.util.DimenUtil
+import org.wikipedia.util.ResourceUtil
+import org.wikipedia.util.StringUtil
+import org.wikipedia.util.UriUtil
 import org.wikipedia.util.log.L
-import java.util.*
+import java.util.Locale
+import java.util.concurrent.TimeUnit
 
 object NotificationPresenter {
+
+    const val NOTIFICATION_TYPE_LOCAL = "local"
+    private var lastPermissionRequestTime = 0L
+
+    fun maybeRequestPermission(context: Context, launcher: ActivityResultLauncher<String>) {
+        val millisSinceLastRequest = System.currentTimeMillis() - lastPermissionRequestTime
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            !Prefs.isInitialOnboardingEnabled &&
+            AccountUtil.isLoggedIn &&
+            (millisSinceLastRequest > TimeUnit.HOURS.toMillis(1) || millisSinceLastRequest < 0) &&
+            ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+            launcher.launch(Manifest.permission.POST_NOTIFICATIONS)
+            lastPermissionRequestTime = System.currentTimeMillis()
+        }
+    }
 
     fun showNotification(context: Context, n: Notification, wikiSiteName: String, lang: String) {
         val notificationCategory = NotificationCategory.find(n.category)
@@ -43,7 +71,7 @@ object NotificationPresenter {
             it.getPrimary()?.let { primary ->
                 if (NotificationCategory.EDIT_USER_TALK.id == n.category) {
                     val talkWiki = WikiSite(primary.url)
-                    val talkTitle = PageTitle.titleForUri(Uri.parse(primary.url), talkWiki)
+                    val talkTitle = PageTitle.titleForUri(primary.url.toUri(), talkWiki)
                     activityIntent = addIntentExtras(TalkTopicsActivity.newIntent(context, talkTitle, Constants.InvokeSource.NOTIFICATION), n.id, n.type)
                     addActionForTalkPage(context, builder, primary, n)
                 } else {
@@ -70,19 +98,24 @@ object NotificationPresenter {
         // When showing the multiple-unread notification, we pass the unreadCount as the "id"
         // purely for analytics purposes, to get a sense of how many unread notifications are
         // typically queued up when the user has more than two of them.
-        val builder = getDefaultBuilder(context, unreadCount.toLong(), NotificationPollBroadcastReceiver.TYPE_MULTIPLE)
+        val builder = getDefaultBuilder(context, unreadCount.toLong(), type = NotificationPollBroadcastReceiver.TYPE_MULTIPLE)
         showNotification(context, builder, 0, context.getString(R.string.app_name),
                 context.getString(R.string.notification_many_unread, unreadCount), context.getString(R.string.notification_many_unread, unreadCount),
                 null, R.drawable.ic_notifications_black_24dp, R.color.blue600,
                 addIntentExtras(NotificationActivity.newIntent(context), unreadCount.toLong(), NotificationPollBroadcastReceiver.TYPE_MULTIPLE))
     }
 
-    fun addIntentExtras(intent: Intent, id: Long, type: String): Intent {
-        return intent.putExtra(Constants.INTENT_EXTRA_NOTIFICATION_ID, id)
-                .putExtra(Constants.INTENT_EXTRA_NOTIFICATION_TYPE, type)
+    fun addIntentExtras(intent: Intent, id: Long, type: String = NOTIFICATION_TYPE_LOCAL): Intent {
+        return intent
+            .putExtra(Constants.INTENT_EXTRA_NOTIFICATION_ID, id)
+            .putExtra(Constants.INTENT_EXTRA_NOTIFICATION_TYPE, type)
+            .putExtra(Constants.INTENT_EXTRA_INVOKE_SOURCE, Constants.InvokeSource.NOTIFICATION)
     }
 
-    fun getDefaultBuilder(context: Context, id: Long, type: String?, notificationCategory: NotificationCategory = NotificationCategory.SYSTEM): NotificationCompat.Builder {
+    fun getDefaultBuilder(
+        context: Context, id: Long, type: String? = NOTIFICATION_TYPE_LOCAL,
+        notificationCategory: NotificationCategory = NotificationCategory.SYSTEM,
+    ): NotificationCompat.Builder {
         return NotificationCompat.Builder(context, notificationCategory.id)
                 .setDefaults(NotificationCompat.DEFAULT_ALL)
                 .setPriority(NotificationCompat.PRIORITY_HIGH)
@@ -90,29 +123,37 @@ object NotificationPresenter {
                 .setDeleteIntent(NotificationPollBroadcastReceiver.getCancelNotificationPendingIntent(context, id, type))
     }
 
-    fun showNotification(context: Context, builder: NotificationCompat.Builder, id: Int,
-                         title: String, text: String, longText: CharSequence, lang: String?,
-                         @DrawableRes icon: Int, @ColorRes color: Int, bodyIntent: Intent) {
+    fun showNotification(
+        context: Context, builder: NotificationCompat.Builder, id: Int,
+        title: String, text: String, longText: CharSequence?, lang: String?,
+        @DrawableRes icon: Int?, @ColorRes color: Int, bodyIntent: Intent,
+        largeIcon: Bitmap? = null,
+    ): Boolean {
+        if (ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+            return false
+        }
         builder.setContentIntent(PendingIntentCompat.getActivity(context, 0, bodyIntent, PendingIntent.FLAG_UPDATE_CURRENT, false))
-                .setLargeIcon(drawNotificationBitmap(context, color, icon, lang.orEmpty().uppercase(Locale.getDefault())))
+                .setLargeIcon(largeIcon ?: icon?.let { drawNotificationBitmap(context, color, it, lang.orEmpty().uppercase(Locale.getDefault())) })
                 .setSmallIcon(R.drawable.ic_wikipedia_w)
                 .setColor(ContextCompat.getColor(context, color))
                 .setContentTitle(title)
                 .setContentText(text)
                 .setStyle(NotificationCompat.BigTextStyle().bigText(longText))
-        context.getSystemService<NotificationManager>()?.notify(id, builder.build())
+        NotificationManagerCompat.from(context).notify(id, builder.build())
+        return true
     }
 
     private fun addAction(context: Context, builder: NotificationCompat.Builder, link: Notification.Link, n: Notification) {
         if (UriUtil.isDiffUrl(link.url)) {
             try {
                 addActionForDiffLink(context, builder, link, n)
+                return
             } catch (e: Exception) {
                 L.e(e)
             }
         }
         val pendingIntent = PendingIntentCompat.getActivity(context, 0,
-            addIntentExtras(Intent(Intent.ACTION_VIEW, Uri.parse(link.url)), n.id, n.type),
+            addIntentExtras(Intent(Intent.ACTION_VIEW, link.url.toUri()), n.id, n.type),
             PendingIntent.FLAG_UPDATE_CURRENT, false)
         val labelStr: String = if (link.tooltip.isNotEmpty()) {
             StringUtil.fromHtml(link.tooltip).toString()
@@ -123,7 +164,7 @@ object NotificationPresenter {
     }
 
     private fun addActionForDiffLink(context: Context, builder: NotificationCompat.Builder, link: Notification.Link, n: Notification) {
-        val uri = Uri.parse(link.url)
+        val uri = link.url.toUri()
         val title = uri.getQueryParameter("title")
         val oldRev = uri.getQueryParameter("prev").orEmpty().toLongOrNull() ?: -1
         val newRev = uri.getQueryParameter("diff").orEmpty().toLongOrNull() ?: -1
@@ -136,15 +177,17 @@ object NotificationPresenter {
 
     private fun addActionForTalkPage(context: Context, builder: NotificationCompat.Builder, link: Notification.Link, n: Notification) {
         val wiki = WikiSite(link.url)
-        val title = PageTitle.titleForUri(Uri.parse(link.url), wiki)
+        val title = PageTitle.titleForUri(link.url.toUri(), wiki)
         val pendingIntent = PendingIntentCompat.getActivity(context, 0,
             addIntentExtras(TalkTopicsActivity.newIntent(context, title, Constants.InvokeSource.NOTIFICATION), n.id, n.type),
             PendingIntent.FLAG_UPDATE_CURRENT, false)
         builder.addAction(0, StringUtil.fromHtml(link.label).toString(), pendingIntent)
     }
 
-    private fun addActionWithDirectReply(context: Context, builder: NotificationCompat.Builder,
-                                         title: PageTitle, replyTo: String, id: Int) {
+    private fun addActionWithDirectReply(
+        context: Context, builder: NotificationCompat.Builder,
+        title: PageTitle, replyTo: String, id: Int,
+    ) {
         val remoteInput = RemoteInput.Builder(NotificationPollBroadcastReceiver.RESULT_KEY_DIRECT_REPLY)
             .build()
         val resultIntent = Intent(context, NotificationPollBroadcastReceiver::class.java)

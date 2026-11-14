@@ -24,21 +24,26 @@ class WidgetFeaturedPageWorker(
             val mainPageTitle = PageTitle(MainPageNameData.valueFor(app.appOrSystemLanguageCode), app.wikiSite)
             val date = DateUtil.getUtcRequestDateFor(0)
 
-            val result = ServiceFactory.getRest(WikipediaApp.instance.wikiSite)
-                .getFeedFeatured(date.year, date.month, date.day)
+            val result = ServiceFactory.getRest(app.wikiSite)
+                .getFeedFeatured(date.year, date.month, date.day, app.wikiSite.languageCode)
 
             // TODO: don't use PageSummary.
             val summary = if (result.tfa != null) {
-                result.tfa
+                val hasParentLanguageCode = !app.languageState.getDefaultLanguageCode(app.wikiSite.languageCode).isNullOrEmpty()
+                if (hasParentLanguageCode) {
+                    ServiceFactory.getRest(app.wikiSite).getPageSummary(result.tfa.apiTitle)
+                } else {
+                    result.tfa
+                }
             } else {
                 val response = ServiceFactory.get(mainPageTitle.wikiSite).parseTextForMainPage(mainPageTitle.prefixedText)
-                ServiceFactory.getRest(WikipediaApp.instance.wikiSite).getPageSummary(null, findFeaturedArticleTitle(response.text))
+                ServiceFactory.getRest(app.wikiSite).getPageSummary(findFeaturedArticleTitle(response.text))
             }
 
             val pageTitle = summary.getPageTitle(app.wikiSite)
             pageTitle.displayText = summary.displayTitle
 
-            WidgetProviderFeaturedPage.forceUpdateWidget(applicationContext, pageTitle, false)
+            WidgetProviderFeaturedPage.forceUpdateWidget(applicationContext, pageTitle)
 
             Result.success()
         } catch (e: Exception) {

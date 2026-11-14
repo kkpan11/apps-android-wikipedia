@@ -18,7 +18,7 @@ class HttpStatusException : IOException {
             } else {
                 var str = "Code: $code, URL: $url"
                 serviceError?.run {
-                    str += ", title: $title, detail: $details"
+                    str += ", key: $key, message: $message"
                 }
                 str
             }
@@ -27,7 +27,7 @@ class HttpStatusException : IOException {
         this.code = rsp.code
         url = rsp.request.url.toUri().toString()
         try {
-            rsp.body?.let {
+            rsp.body.let {
                 if (it.contentType().toString().contains("json")) {
                     val body = it.string()
                     if (body.contains("\$schema")) {

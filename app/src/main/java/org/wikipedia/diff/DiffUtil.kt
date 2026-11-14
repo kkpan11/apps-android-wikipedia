@@ -14,6 +14,7 @@ import androidx.core.text.inSpans
 import androidx.core.text.set
 import androidx.recyclerview.widget.RecyclerView
 import org.wikipedia.R
+import org.wikipedia.WikipediaApp
 import org.wikipedia.dataclient.restbase.DiffResponse
 import org.wikipedia.dataclient.restbase.Revision
 import org.wikipedia.util.ResourceUtil
@@ -28,13 +29,13 @@ object DiffUtil {
             val item = DiffLine(context, it)
             // coalesce diff lines that occur on successive line numbers
             if (lastItem != null &&
-                    ((item.diff.lineNumber - lastItem!!.diff.lineNumber == 1 && lastItem!!.diff.type == DiffResponse.DIFF_TYPE_LINE_ADDED && item.diff.type == DiffResponse.DIFF_TYPE_LINE_ADDED) ||
-                            (item.diff.lineNumber - lastItem!!.diff.lineNumber == 1 && lastItem!!.diff.type == DiffResponse.DIFF_TYPE_LINE_WITH_SAME_CONTENT && item.diff.type == DiffResponse.DIFF_TYPE_LINE_WITH_SAME_CONTENT) ||
-                            (lastItem!!.diff.type == DiffResponse.DIFF_TYPE_LINE_REMOVED && item.diff.type == DiffResponse.DIFF_TYPE_LINE_REMOVED))) {
-                if (it.lineNumber > lastItem!!.lineEnd) {
-                    lastItem!!.lineEnd = it.lineNumber
+                    ((item.diff.lineNumber - lastItem.diff.lineNumber == 1 && lastItem.diff.type == DiffResponse.DIFF_TYPE_LINE_ADDED && item.diff.type == DiffResponse.DIFF_TYPE_LINE_ADDED) ||
+                            (item.diff.lineNumber - lastItem.diff.lineNumber == 1 && lastItem.diff.type == DiffResponse.DIFF_TYPE_LINE_WITH_SAME_CONTENT && item.diff.type == DiffResponse.DIFF_TYPE_LINE_WITH_SAME_CONTENT) ||
+                            (lastItem.diff.type == DiffResponse.DIFF_TYPE_LINE_REMOVED && item.diff.type == DiffResponse.DIFF_TYPE_LINE_REMOVED))) {
+                if (it.lineNumber > lastItem.lineEnd) {
+                    lastItem.lineEnd = it.lineNumber
                 }
-                lastItem!!.parsedText = buildSpannedString {
+                lastItem.parsedText = buildSpannedString {
                     appendLine(lastItem!!.parsedText)
                     append(item.parsedText)
                 }
@@ -77,7 +78,7 @@ object DiffUtil {
         }
     }
 
-    private class DiffLineHolder constructor(itemView: DiffLineView) : RecyclerView.ViewHolder(itemView) {
+    private class DiffLineHolder(itemView: DiffLineView) : RecyclerView.ViewHolder(itemView) {
         fun bindItem(item: DiffLine) {
             (itemView as DiffLineView).setItem(item)
         }
@@ -105,7 +106,7 @@ object DiffUtil {
                 for (highlightRange in diff.highlightRanges) {
                     val indices = StringUtil.utf8Indices(diff.text)
                     val highlightRangeStart = indices[highlightRange.start].coerceIn(0, diff.text.length)
-                    val highlightRangeEnd = (indices.getOrElse(highlightRange.start + highlightRange.length) { indices.last() + 1 }).coerceIn(0, diff.text.length)
+                    val highlightRangeEnd = (indices.getOrElse(highlightRange.start + highlightRange.length) { diff.text.length }).coerceIn(0, diff.text.length)
                     val isAddition = highlightRange.type == DiffResponse.HIGHLIGHT_TYPE_ADD
 
                     updateDiffTextDecor(context, isAddition, highlightRangeStart, highlightRangeEnd)
@@ -115,8 +116,9 @@ object DiffUtil {
     }
 
     private fun SpannableStringBuilder.updateDiffTextDecor(context: Context, isAddition: Boolean, start: Int, end: Int) {
+        val alpha = if (WikipediaApp.instance.currentTheme.isDark) 96 else 48
         this[start, end] = BackgroundColorSpan(ColorUtils.setAlphaComponent(ResourceUtil.getThemedColor(context,
-            if (isAddition) R.attr.success_color else R.attr.destructive_color), 48))
+            if (isAddition) R.attr.success_color else R.attr.destructive_color), alpha))
         this[start, end] = StyleSpan(Typeface.BOLD)
         this[start, end] = ForegroundColorSpan(ResourceUtil.getThemedColor(context, R.attr.primary_color))
         if (!isAddition) {

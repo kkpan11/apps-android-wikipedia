@@ -1,6 +1,8 @@
 package org.wikipedia.dataclient
 
 import org.wikipedia.dataclient.growthtasks.GrowthImageSuggestion
+import org.wikipedia.dataclient.growthtasks.GrowthUserImpact
+import org.wikipedia.dataclient.restbase.Attribution
 import org.wikipedia.dataclient.restbase.DiffResponse
 import org.wikipedia.dataclient.restbase.EditCount
 import org.wikipedia.dataclient.restbase.Revision
@@ -33,6 +35,16 @@ interface CoreRestService {
         @Path("title") title: String,
         @Body body: GrowthImageSuggestion.AddImageFeedbackBody
     )
+
+    @GET("growthexperiments/v0/user-impact/%23{userId}")
+    suspend fun getUserImpact(
+        @Path("userId") userId: Int
+    ): GrowthUserImpact
+
+    @GET("attribution/v0-beta/pages/{title}/signals?redirect=true&expand=trust_and_relevance")
+    suspend fun getAttribution(
+        @Path("title") title: String
+    ): Attribution
 
     companion object {
         const val CORE_REST_API_PREFIX = "w/rest.php/"

@@ -1,6 +1,5 @@
 package org.wikipedia.analytics.eventplatform
 
-import io.reactivex.rxjava3.core.Observable
 import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.POST
@@ -17,8 +16,14 @@ import retrofit2.http.POST
  */
 interface EventService {
     @POST("/v1/events?hasty=true")
-    fun postEventsHasty(@Body events: @JvmSuppressWildcards List<Event>): Observable<Response<Unit>>
+    suspend fun postEventsHasty(@Body events: @JvmSuppressWildcards List<Event>): Response<Unit>
 
     @POST("/v1/events")
-    fun postEvents(@Body events: @JvmSuppressWildcards List<Event>): Observable<Response<Unit>>
+    suspend fun postEvents(@Body events: @JvmSuppressWildcards List<Event>): Response<Unit>
+
+    @POST("/v1/events?hasty=true")
+    suspend fun postEventsHastyTk(@Body events: List<org.wikimedia.testkitchen.event.Event>): Response<Unit>
+
+    @POST("/v1/events")
+    suspend fun postEventsTk(@Body events: List<org.wikimedia.testkitchen.event.Event>): Response<Unit>
 }

@@ -1,22 +1,19 @@
 package org.wikipedia.dataclient
 
 import androidx.collection.lruCache
-import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
 import okhttp3.Interceptor
-import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.Response
 import okhttp3.logging.HttpLoggingInterceptor
+import org.wikimedia.testkitchen.config.DestinationEventService
 import org.wikipedia.WikipediaApp
-import org.wikipedia.analytics.eventplatform.DestinationEventService
 import org.wikipedia.analytics.eventplatform.EventService
-import org.wikipedia.analytics.eventplatform.StreamConfig
 import org.wikipedia.dataclient.okhttp.OkHttpConnectionFactory
-import org.wikipedia.json.JsonUtil
+import org.wikipedia.json.MwExceptionConverterFactory
 import org.wikipedia.settings.Prefs
 import retrofit2.Retrofit
-import retrofit2.adapter.rxjava3.RxJava3CallAdapterFactory
 import retrofit2.create
 import java.io.IOException
+import java.util.concurrent.TimeUnit
 
 object ServiceFactory {
 
@@ -36,7 +33,7 @@ object ServiceFactory {
     })
 
     private val ANALYTICS_REST_SERVICE_CACHE = lruCache<DestinationEventService, EventService>(SERVICE_CACHE_SIZE, create = {
-        val intakeBaseUriOverride = Prefs.eventPlatformIntakeUriOverride.ifEmpty { it.baseUri }
+        val intakeBaseUriOverride = Prefs.eventPlatformIntakeUriOverride.orEmpty().ifEmpty { it.baseUri }
         createRetrofit(null, intakeBaseUriOverride).create<EventService>()
     })
 
@@ -52,8 +49,8 @@ object ServiceFactory {
         return CORE_REST_SERVICE_CACHE[wiki]!!
     }
 
-    fun getAnalyticsRest(streamConfig: StreamConfig): EventService {
-        return ANALYTICS_REST_SERVICE_CACHE[streamConfig.destinationEventService]!!
+    fun getAnalyticsRest(destinationEventService: DestinationEventService): EventService {
+        return ANALYTICS_REST_SERVICE_CACHE[destinationEventService]!!
     }
 
     operator fun <T> get(wiki: WikiSite, baseUrl: String?, service: Class<T>): T {
@@ -61,7 +58,7 @@ object ServiceFactory {
         return r.create(service)
     }
 
-    private fun getBasePath(wiki: WikiSite): String {
+    fun getBasePath(wiki: WikiSite): String {
         var path = wiki.url()
         if (!path.endsWith("/")) {
             path += "/"
@@ -78,29 +75,24 @@ object ServiceFactory {
         return path
     }
 
-    private fun createRetrofit(wiki: WikiSite?, baseUrl: String): Retrofit {
+    fun createRetrofit(wiki: WikiSite?, baseUrl: String, readTimeoutSec: Long = OkHttpConnectionFactory.DEFAULT_READ_TIMEOUT_SEC): Retrofit {
         val builder = OkHttpConnectionFactory.client.newBuilder()
+        builder.readTimeout(readTimeoutSec, TimeUnit.SECONDS)
         builder.interceptors().add(builder.interceptors().indexOfFirst { it is HttpLoggingInterceptor }, LanguageVariantHeaderInterceptor(wiki))
 
         return Retrofit.Builder()
             .baseUrl(baseUrl)
             .client(builder.build())
-            .addCallAdapterFactory(RxJava3CallAdapterFactory.create())
-            .addConverterFactory(JsonUtil.json.asConverterFactory("application/json".toMediaType()))
+            .addConverterFactory(MwExceptionConverterFactory())
             .build()
     }
 
     private class LanguageVariantHeaderInterceptor(private val wiki: WikiSite?) : Interceptor {
         @Throws(IOException::class)
         override fun intercept(chain: Interceptor.Chain): Response {
-            var request = chain.request()
-
-            // TODO: remove when the https://phabricator.wikimedia.org/T271145 is resolved.
-            if (!request.url.encodedPath.contains("/page/related")) {
-                request = request.newBuilder()
-                    .header("Accept-Language", WikipediaApp.instance.getAcceptLanguage(wiki))
-                    .build()
-            }
+            var request = chain.request().newBuilder()
+                .header("Accept-Language", WikipediaApp.instance.getAcceptLanguage(wiki))
+                .build()
             return chain.proceed(request)
         }
     }
